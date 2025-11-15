@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-docs"
+version = "0.1.0"
+description = "MCP Documentation Indexer"
+requires-python = ">=3.8"
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "."
+
+[tool.pylance]
+pythonPath = "src"
+
+[tool.pylint]
+ignore-paths = ["venv", ".venv"]

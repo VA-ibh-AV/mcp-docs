@@ -1,0 +1,73 @@
+.env
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dylib
+
+# Ignore __pycache__ in all subfolders
+**/__pycache__/
+
+# Byte-compiled
+*$py.class
+
+# --- Virtual Environments ---
+venv/
+.env/
+.venv/
+env/
+ENV/
+indexes/
+scraper_cache.sqlite
+
+# Ignore venv anywhere in repo
+**/venv/
+**/.venv/
+**/env/
+
+# --- Environment variables ---
+.env
+*.env
+.env.local
+.env.*.local
+
+# --- IDE / Editor junk ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- Python packaging ---
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Chroma DB persistent dirs ---
+chroma/
+**/chroma/
+*.sqlite3
+*.db
+
+# --- Cache files ---
+.cache/
+**/.cache/
+
+# --- CrewAI generated outputs ---
+output/
+outputs/
+reports/
+
+# --- MCP temp files ---
+mcp_state/
+mcp_cache/
