@@ -1,5 +1,6 @@
 # --- Core Agent Framework ---
 crewai[tools]>=0.51.0
+mcp[cli]
 
 # --- Scraping ---
 requests>=2.32.3

@@ -10,25 +10,12 @@ import os
 # Ensure the package src/ is on the import path so relative imports work.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-# Load environment variables from a .env file when available
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    load_dotenv = None
-
-if load_dotenv is not None:
-    # Load .env from project root (where main.py lives)
-    load_dotenv()
-else:
-    # Not fatal; just inform the user in case they expect .env loading
-    print("info: python-dotenv not installed; .env files will not be auto-loaded. Install with 'pip install python-dotenv' if needed.")
-
+from dotenv import load_dotenv
+load_dotenv()
 from indexer import index_documentation
 
-try:
-    from embeddings.openai_provider import OpenAIEmbeddingProvider
-except ImportError:
-    OpenAIEmbeddingProvider = None
+from embeddings.openai_provider import OpenAIEmbeddingProvider
+
 
 
 def main():
