@@ -71,3 +71,6 @@ reports/
 # --- MCP temp files ---
 mcp_state/
 mcp_cache/
+
+# --- Projects ----
+projects/
