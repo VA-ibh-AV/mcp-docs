@@ -67,7 +67,6 @@ except Exception:
     from mcp.server import Server as FastMCP  # type: ignore
 
 import chromadb
-from openai import OpenAI
 import numpy as np
 
 PROJECT_DIR = os.path.dirname(__file__)
@@ -78,23 +77,13 @@ with open(CONFIG_PATH, "r", encoding="utf-8") as f:
 CHROMA_PATH = config.get("chroma_path", os.path.join(PROJECT_DIR, "data", "chroma"))
 COLLECTION_NAME = config.get("collection_name", "{collection_name}")
 
-# Resolve API key from multiple sources (env var -> project .env -> global config)
+# Resolve provider configuration from multiple sources
 import sys
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Try loading from project .env file
-if not OPENAI_API_KEY:
-    env_path = os.path.join(PROJECT_DIR, ".env")
-    if os.path.exists(env_path):
-        try:
-            from dotenv import load_dotenv
-            load_dotenv(env_path, override=False)
-            OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-        except ImportError:
-            pass
-
-# Try loading from global config
-if not OPENAI_API_KEY:
+# Determine provider (project config > global config > default to openai)
+provider_name = config.get('embedding_provider')
+if not provider_name:
+    # Try global config
     try:
         if os.name == 'nt':  # Windows
             config_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'mcp-docs')
@@ -104,18 +93,88 @@ if not OPENAI_API_KEY:
         if os.path.exists(global_config_path):
             with open(global_config_path, 'r', encoding='utf-8') as f:
                 global_config = json.load(f)
-                OPENAI_API_KEY = global_config.get('openai_api_key') or global_config.get('OPENAI_API_KEY')
+                provider_name = global_config.get('embedding_provider', 'openai')
     except Exception:
-        pass
+        provider_name = 'openai'
 
-# Initialize OpenAI
-if not OPENAI_API_KEY:
-    print("ERROR: OpenAI API key not found.", file=sys.stderr)
-    print("Please set OPENAI_API_KEY environment variable or run 'mcp-docs configure'", file=sys.stderr)
-    raise RuntimeError("OpenAI API key not provided. Run 'mcp-docs configure' to set it up.")
-
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
-print("✓ OpenAI API key configured", file=sys.stderr)
+# Load provider config from project.json or global config
+if provider_name == 'azure-openai':
+    # Azure OpenAI configuration
+    api_key = os.getenv("AZURE_OPENAI_API_KEY") or config.get('azure_openai_api_key')
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or config.get('azure_openai_endpoint')
+    deployment_id = os.getenv("AZURE_OPENAI_DEPLOYMENT_ID") or config.get('azure_openai_deployment_id')
+    api_version = os.getenv("AZURE_OPENAI_API_VERSION") or config.get('azure_openai_api_version', '2024-02-15-preview')
+    
+    if not api_key or not endpoint or not deployment_id:
+        # Try global config
+        try:
+            if os.name == 'nt':
+                config_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'mcp-docs')
+            else:
+                config_dir = os.path.join(os.path.expanduser('~'), '.config', 'mcp-docs')
+            global_config_path = os.path.join(config_dir, 'config.json')
+            if os.path.exists(global_config_path):
+                with open(global_config_path, 'r', encoding='utf-8') as f:
+                    global_config = json.load(f)
+                    api_key = api_key or global_config.get('azure_openai_api_key')
+                    endpoint = endpoint or global_config.get('azure_openai_endpoint')
+                    deployment_id = deployment_id or global_config.get('azure_openai_deployment_id')
+                    api_version = api_version or global_config.get('azure_openai_api_version', '2024-02-15-preview')
+        except Exception:
+            pass
+    
+    if not api_key or not endpoint or not deployment_id:
+        print("ERROR: Azure OpenAI configuration not found.", file=sys.stderr)
+        print("Please run 'mcp-docs configure --provider azure-openai' to set up Azure OpenAI.", file=sys.stderr)
+        raise RuntimeError("Azure OpenAI configuration not provided. Run 'mcp-docs configure' to set it up.")
+    
+    from openai import AzureOpenAI
+    embedding_client = AzureOpenAI(
+        api_key=api_key,
+        azure_endpoint=endpoint.rstrip('/'),
+        api_version=api_version
+    )
+    embedding_model = deployment_id
+    print("✓ Azure OpenAI configured (deployment: " + deployment_id + ")", file=sys.stderr)
+else:
+    # OpenAI configuration
+    api_key = os.getenv("OPENAI_API_KEY") or config.get('openai_api_key')
+    
+    # Try loading from project .env file
+    if not api_key:
+        env_path = os.path.join(PROJECT_DIR, ".env")
+        if os.path.exists(env_path):
+            try:
+                from dotenv import load_dotenv
+                load_dotenv(env_path, override=False)
+                api_key = os.getenv("OPENAI_API_KEY")
+            except ImportError:
+                pass
+    
+    # Try loading from global config
+    if not api_key:
+        try:
+            if os.name == 'nt':  # Windows
+                config_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'mcp-docs')
+            else:  # Unix-like
+                config_dir = os.path.join(os.path.expanduser('~'), '.config', 'mcp-docs')
+            global_config_path = os.path.join(config_dir, 'config.json')
+            if os.path.exists(global_config_path):
+                with open(global_config_path, 'r', encoding='utf-8') as f:
+                    global_config = json.load(f)
+                    api_key = global_config.get('openai_api_key') or global_config.get('OPENAI_API_KEY')
+        except Exception:
+            pass
+    
+    if not api_key:
+        print("ERROR: OpenAI API key not found.", file=sys.stderr)
+        print("Please set OPENAI_API_KEY environment variable or run 'mcp-docs configure'", file=sys.stderr)
+        raise RuntimeError("OpenAI API key not provided. Run 'mcp-docs configure' to set it up.")
+    
+    from openai import OpenAI
+    embedding_client = OpenAI(api_key=api_key)
+    embedding_model = "text-embedding-3-small"
+    print("✓ OpenAI API key configured", file=sys.stderr)
 
 # init chroma client
 print("Initializing ChromaDB client at: " + CHROMA_PATH, file=sys.stderr)
@@ -146,12 +205,18 @@ else:
 
 
 async def _embed_query(text: str) -> List[float]:
-    """Embed a single text query using OpenAI's new API."""
-    response = openai_client.embeddings.create(
-        model="text-embedding-3-small",
-        input=[text],
-        encoding_format="float"
-    )
+    """Embed a single text query using the configured provider."""
+    if provider_name == 'azure-openai':
+        response = embedding_client.embeddings.create(
+            model=embedding_model,  # Azure uses deployment_id
+            input=[text]
+        )
+    else:
+        response = embedding_client.embeddings.create(
+            model=embedding_model,
+            input=[text],
+            encoding_format="float"
+        )
     return response.data[0].embedding
 
 
@@ -327,17 +392,32 @@ def index(project_name: str = typer.Argument(..., help="project name to index"),
     
     typer.echo(f"Indexing project {project_name} from {url} into {output_dir}")
     
-    # Get API key using config module
-    api_key = get_or_prompt_api_key(project_name=project_name, projects_dir=PROJECTS_DIR, interactive=True)
-    if not api_key:
-        typer.secho("Error: OpenAI API key is required.", fg=typer.colors.RED)
-        typer.echo("Run 'mcp-docs configure' to set up your API key.")
+    # Get provider configuration
+    from src.config import get_or_prompt_provider_config
+    from src.embeddings import AzureOpenAIEmbeddingProvider
+    
+    provider_config = get_or_prompt_provider_config(project_name=project_name, projects_dir=PROJECTS_DIR, interactive=True)
+    if not provider_config:
+        typer.secho("Error: Embedding provider configuration is required.", fg=typer.colors.RED)
+        typer.echo("Run 'mcp-docs configure' to set up your embedding provider.")
         raise typer.Exit(1)
     
-    # Create embedding provider (default to OpenAI)
+    # Create embedding provider based on config
     try:
-        provider = OpenAIEmbeddingProvider(api_key=api_key)
-        typer.echo(f"Using embedding provider: {provider.info()['name']} (model: {provider.info()['model']})")
+        provider_name = provider_config.get('provider', 'openai')
+        if provider_name == 'azure-openai':
+            provider = AzureOpenAIEmbeddingProvider(
+                api_key=provider_config.get('api_key'),
+                endpoint=provider_config.get('endpoint'),
+                deployment_id=provider_config.get('deployment_id'),
+                api_version=provider_config.get('api_version', '2024-02-15-preview')
+            )
+            info = provider.info()
+            typer.echo(f"Using embedding provider: {info['name']} (deployment: {info['deployment_id']})")
+        else:  # openai
+            provider = OpenAIEmbeddingProvider(api_key=provider_config.get('api_key'))
+            info = provider.info()
+            typer.echo(f"Using embedding provider: {info['name']} (model: {info['model']})")
     except Exception as e:
         typer.secho(f"Failed to initialize embedding provider: {e}", fg=typer.colors.RED)
         raise typer.Exit(1)
@@ -457,89 +537,138 @@ def list_projects():
 
 @APP.command()
 def configure(
-    api_key: Optional[str] = typer.Option(None, "--api-key", "-k", help="OpenAI API key to save"),
-    project: Optional[str] = typer.Option(None, "--project", "-p", help="Save key for specific project"),
+    provider: Optional[str] = typer.Option(None, "--provider", help="Embedding provider: 'openai' or 'azure-openai'"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", "-k", help="API key (for OpenAI or Azure OpenAI)"),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint", help="Azure OpenAI endpoint URL"),
+    deployment_id: Optional[str] = typer.Option(None, "--deployment-id", help="Azure OpenAI deployment ID"),
+    api_version: Optional[str] = typer.Option(None, "--api-version", help="Azure OpenAI API version"),
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="Save config for specific project"),
     global_scope: bool = typer.Option(False, "--global", "-g", help="Save to global config (default: project-specific)"),
     show: bool = typer.Option(False, "--show", help="Show current configuration"),
-    unset: bool = typer.Option(False, "--unset", help="Remove stored API key")
+    unset: bool = typer.Option(False, "--unset", help="Remove stored configuration")
 ):
     """
-    Configure API keys for mcp-docs.
+    Configure embedding provider for mcp-docs.
     
     Examples:
-        mcp-docs configure                    # Interactive setup
-        mcp-docs configure --api-key sk-...   # Save key directly
-        mcp-docs configure --project mydocs   # Save for specific project
-        mcp-docs configure --global           # Save to global config
-        mcp-docs configure --show             # Show current config
-        mcp-docs configure --unset            # Remove stored key
+        mcp-docs configure                              # Interactive setup
+        mcp-docs configure --provider openai --api-key sk-...
+        mcp-docs configure --provider azure-openai --api-key ... --endpoint ... --deployment-id ...
+        mcp-docs configure --project mydocs            # Save for specific project
+        mcp-docs configure --global                    # Save to global config
+        mcp-docs configure --show                      # Show current config
+        mcp-docs configure --unset                     # Remove stored config
     """
     if show:
         # Show current configuration
-        typer.echo("Current API key configuration:")
+        from src.config import get_provider_config
+        
+        typer.echo("Current embedding provider configuration:")
         typer.echo("=" * 50)
         
-        # Check environment variable
-        env_key = os.getenv("OPENAI_API_KEY")
-        if env_key:
-            typer.echo("✓ Environment variable: OPENAI_API_KEY (set)")
-        else:
-            typer.echo("✗ Environment variable: OPENAI_API_KEY (not set)")
-        
         # Check global config
-        global_key = get_api_key()
-        if global_key and not env_key:  # Only show if not overridden by env
-            typer.echo("✓ Global config: API key found")
+        global_config = get_provider_config()
+        if global_config:
+            provider_name = global_config.get('provider', 'openai')
+            typer.echo(f"✓ Global config: Provider '{provider_name}' configured")
+            if provider_name == 'azure-openai':
+                typer.echo(f"  Endpoint: {global_config.get('endpoint', 'N/A')}")
+                typer.echo(f"  Deployment ID: {global_config.get('deployment_id', 'N/A')}")
         else:
-            typer.echo("✗ Global config: No API key stored")
+            typer.echo("✗ Global config: No provider configured")
         
         # Check project configs
         if project:
-            project_key = get_api_key(project, PROJECTS_DIR)
-            if project_key and not env_key:
-                typer.echo(f"✓ Project '{project}': API key found")
+            project_config = get_provider_config(project, PROJECTS_DIR)
+            if project_config:
+                provider_name = project_config.get('provider', 'openai')
+                typer.echo(f"✓ Project '{project}': Provider '{provider_name}' configured")
+                if provider_name == 'azure-openai':
+                    typer.echo(f"  Endpoint: {project_config.get('endpoint', 'N/A')}")
+                    typer.echo(f"  Deployment ID: {project_config.get('deployment_id', 'N/A')}")
             else:
-                typer.echo(f"✗ Project '{project}': No API key stored")
+                typer.echo(f"✗ Project '{project}': No provider configured")
         
         return
     
     if unset:
-        # Remove API key
+        # Remove provider config
+        from src.config import _get_global_config_path, save_project_config, load_project_config
         if project:
-            env_path = PROJECTS_DIR / project / ".env"
-            if env_path.exists():
-                env_path.unlink()
-                typer.echo(f"✓ Removed API key for project '{project}'")
-            else:
-                typer.echo(f"No API key found for project '{project}'")
+            try:
+                project_config = load_project_config(project, PROJECTS_DIR)
+                project_config.pop('embedding_provider', None)
+                project_config.pop('openai_api_key', None)
+                project_config.pop('azure_openai_api_key', None)
+                project_config.pop('azure_openai_endpoint', None)
+                project_config.pop('azure_openai_deployment_id', None)
+                project_config.pop('azure_openai_api_version', None)
+                save_project_config(project, PROJECTS_DIR, project_config)
+                typer.echo(f"✓ Removed provider configuration for project '{project}'")
+            except Exception as e:
+                typer.echo(f"Error removing config: {e}")
         else:
-            from src.config import _get_global_config_path
             config_path = _get_global_config_path()
             if config_path.exists():
                 try:
                     with open(config_path, 'r', encoding='utf-8') as f:
                         config = json.load(f)
+                    config.pop('embedding_provider', None)
                     config.pop('openai_api_key', None)
-                    config.pop('OPENAI_API_KEY', None)
+                    config.pop('azure_openai_api_key', None)
+                    config.pop('azure_openai_endpoint', None)
+                    config.pop('azure_openai_deployment_id', None)
+                    config.pop('azure_openai_api_version', None)
                     with open(config_path, 'w', encoding='utf-8') as f:
                         json.dump(config, f, indent=2)
-                    typer.echo("✓ Removed API key from global config")
+                    typer.echo("✓ Removed provider configuration from global config")
                 except Exception as e:
-                    typer.echo(f"Error removing key: {e}")
+                    typer.echo(f"Error removing config: {e}")
             else:
-                typer.echo("No global API key found")
+                typer.echo("No global provider configuration found")
         return
     
-    # Save API key
-    if api_key:
-        key = api_key
-    else:
-        # Interactive prompt
-        from src.config import prompt_api_key
-        key = prompt_api_key()
+    # Get provider configuration
+    from src.config import prompt_provider_config, save_provider_config
     
-    if not key:
-        typer.echo("No API key provided.")
+    if provider or api_key or endpoint or deployment_id:
+        # Non-interactive mode - build config from options
+        if not provider:
+            # Try to infer from options
+            if endpoint or deployment_id:
+                provider = 'azure-openai'
+            else:
+                provider = 'openai'
+        
+        provider_config = {'provider': provider}
+        
+        if provider == 'azure-openai':
+            if not api_key:
+                typer.secho("Error: --api-key is required for Azure OpenAI", fg=typer.colors.RED)
+                raise typer.Exit(1)
+            if not endpoint:
+                typer.secho("Error: --endpoint is required for Azure OpenAI", fg=typer.colors.RED)
+                raise typer.Exit(1)
+            if not deployment_id:
+                typer.secho("Error: --deployment-id is required for Azure OpenAI", fg=typer.colors.RED)
+                raise typer.Exit(1)
+            
+            provider_config['api_key'] = api_key
+            provider_config['endpoint'] = endpoint.rstrip('/')
+            provider_config['deployment_id'] = deployment_id
+            if api_version:
+                provider_config['api_version'] = api_version
+        else:  # openai
+            if not api_key:
+                typer.secho("Error: --api-key is required for OpenAI", fg=typer.colors.RED)
+                raise typer.Exit(1)
+            provider_config['api_key'] = api_key
+    else:
+        # Interactive mode
+        provider_config = prompt_provider_config(provider)
+    
+    if not provider_config:
+        typer.echo("No provider configuration provided.")
         raise typer.Exit(1)
     
     # Determine scope
@@ -558,10 +687,11 @@ def configure(
             scope = 'global'
             scope_name = "global configuration"
     
-    # Save the key
+    # Save the config
     try:
-        saved_path = save_api_key(key, scope=scope, project_name=project, projects_dir=PROJECTS_DIR)
-        typer.echo(f"✓ API key saved to {scope_name}")
+        saved_path = save_provider_config(provider_config, scope=scope, project_name=project, projects_dir=PROJECTS_DIR)
+        provider_name = provider_config.get('provider', 'openai')
+        typer.echo(f"✓ {provider_name} configuration saved to {scope_name}")
         typer.echo(f"  Location: {saved_path}")
     except Exception as e:
         typer.secho(f"Error saving API key: {e}", fg=typer.colors.RED)

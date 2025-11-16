@@ -5,7 +5,8 @@ A Python package that scrapes documentation sites, indexes them with embeddings,
 ## Features
 
 - **Web Scraping**: Uses Playwright to scrape JavaScript-rendered documentation sites
-- **Semantic Search**: Indexes documentation with OpenAI embeddings for semantic search
+- **Semantic Search**: Indexes documentation with embeddings for semantic search
+- **Multiple Embedding Providers**: Supports OpenAI and Azure OpenAI embeddings
 - **Vector Storage**: Uses ChromaDB for persistent vector storage
 - **MCP Server**: Automatically generates and runs MCP servers for each documentation project
 - **Project-Based**: Organizes documentation sites as separate projects
@@ -40,28 +41,51 @@ playwright install chromium
 
 The project requires:
 - Python 3.8+
-- OpenAI API key (for embeddings)
+- Embedding provider credentials:
+  - OpenAI API key, OR
+  - Azure OpenAI (API key, endpoint, and deployment ID)
 - Playwright (for web scraping)
 - ChromaDB (for vector storage)
 
 ## Quick Start
 
-### 1. Configure API Key
+### 1. Configure Embedding Provider
 
-Set up your OpenAI API key:
+Set up your embedding provider (OpenAI or Azure OpenAI):
 
 ```bash
+# Interactive configuration (will prompt for provider selection)
 mcp-docs configure
 ```
 
-Or set it as an environment variable:
+Or configure via command line:
 
 ```bash
+# Configure OpenAI
+mcp-docs configure --provider openai --api-key sk-your-key-here
+
+# Configure Azure OpenAI
+mcp-docs configure --provider azure-openai --api-key your-key --endpoint https://your-resource.openai.azure.com --deployment-id text-embedding-ada-002
+```
+
+You can also set environment variables:
+
+```bash
+# For OpenAI
 # Windows (PowerShell)
 $env:OPENAI_API_KEY="sk-your-key-here"
-
 # macOS/Linux
 export OPENAI_API_KEY="sk-your-key-here"
+
+# For Azure OpenAI
+# Windows (PowerShell)
+$env:AZURE_OPENAI_API_KEY="your-key"
+$env:AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
+$env:AZURE_OPENAI_DEPLOYMENT_ID="text-embedding-ada-002"
+# macOS/Linux
+export AZURE_OPENAI_API_KEY="your-key"
+export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
+export AZURE_OPENAI_DEPLOYMENT_ID="text-embedding-ada-002"
 ```
 
 ### 2. Add a Documentation Project
@@ -88,7 +112,7 @@ mcp-docs index my-docs --max-pages 200 --max-depth 5
 This will:
 - Scrape pages from the documentation site (up to `max-pages`)
 - Clean and chunk the content
-- Generate embeddings using OpenAI
+- Generate embeddings using your configured provider (OpenAI or Azure OpenAI)
 - Store embeddings in ChromaDB
 
 ### 4. Start the MCP Server
@@ -111,6 +135,11 @@ Create a new documentation project.
 mcp-docs add-project react-docs https://react.dev
 ```
 
+This will:
+- Create a project directory at `projects/<name>/`
+- Initialize ChromaDB collection
+- Save project configuration to `project.json`
+
 ### `index <project_name> [options]`
 
 Index a documentation project.
@@ -128,35 +157,56 @@ mcp-docs index react-docs --max-pages 100 --max-depth 3
 Start the MCP server for a project.
 
 **Options:**
-- `--port <PORT>`: Port for MCP server (optional, depends on client)
+- `--port <PORT>`: Port for MCP server (optional, for SSE transport)
 
 ```bash
 mcp-docs start react-docs
+mcp-docs start react-docs --port 8080
+```
+
+### `list`
+
+List all available projects and their status.
+
+Shows all projects with their configuration, indexing status, and document counts.
+
+```bash
+mcp-docs list
 ```
 
 ### `configure [options]`
 
-Configure API keys and settings.
+Configure embedding provider and credentials.
 
 **Options:**
-- `--api-key <KEY>`: Set API key directly
+- `--provider <PROVIDER>`: Embedding provider ('openai' or 'azure-openai')
+- `--api-key <KEY>`: API key (required for both providers)
+- `--endpoint <URL>`: Azure OpenAI endpoint URL (required for Azure OpenAI)
+- `--deployment-id <ID>`: Azure OpenAI deployment ID (required for Azure OpenAI)
+- `--api-version <VERSION>`: Azure OpenAI API version (optional, default: 2024-02-15-preview)
 - `--project <NAME>`: Configure for specific project
 - `--global`: Save to global config (default)
 - `--show`: Show current configuration
-- `--unset`: Remove stored API key
+- `--unset`: Remove stored configuration
 
 ```bash
-# Interactive configuration
+# Interactive configuration (prompts for provider selection)
 mcp-docs configure
 
-# Set API key directly
-mcp-docs configure --api-key sk-...
+# Configure OpenAI
+mcp-docs configure --provider openai --api-key sk-...
+
+# Configure Azure OpenAI
+mcp-docs configure --provider azure-openai --api-key your-key --endpoint https://your-resource.openai.azure.com --deployment-id text-embedding-ada-002
 
 # Configure for specific project
-mcp-docs configure --project my-docs --api-key sk-...
+mcp-docs configure --project my-docs --provider azure-openai --api-key ... --endpoint ... --deployment-id ...
 
 # Show current config
 mcp-docs configure --show
+
+# Remove stored configuration
+mcp-docs configure --unset
 ```
 
 ## Project Structure
@@ -182,7 +232,8 @@ mcp-docs/
     │   ├── embedder.py         # Embedding generation
     │   └── db_writer.py        # Database writing
     ├── embeddings/             # Embedding providers
-    │   └── openai_provider.py  # OpenAI provider
+    │   ├── openai_provider.py  # OpenAI provider
+    │   └── azure_openai_provider.py  # Azure OpenAI provider
     └── vectorstores/           # Vector store implementations
         └── chrome_store.py     # ChromaDB store
 ```
@@ -196,26 +247,56 @@ Each project has a `project.json` file:
   "name": "my-docs",
   "url": "https://docs.example.com",
   "collection_name": "abc123...",
-  "chroma_path": "/path/to/indexes/abc123..."
+  "chroma_path": "/path/to/indexes/abc123...",
+  "embedding_provider": "openai",
+  "openai_api_key": "sk-..." 
 }
 ```
 
-## API Key Configuration
+For Azure OpenAI projects:
 
-API keys can be configured at multiple levels (in priority order):
+```json
+{
+  "name": "my-docs",
+  "url": "https://docs.example.com",
+  "collection_name": "abc123...",
+  "chroma_path": "/path/to/indexes/abc123...",
+  "embedding_provider": "azure-openai",
+  "azure_openai_api_key": "...",
+  "azure_openai_endpoint": "https://your-resource.openai.azure.com",
+  "azure_openai_deployment_id": "text-embedding-ada-002"
+}
+```
 
-1. **Environment variable**: `OPENAI_API_KEY`
-2. **Project-specific**: `projects/<project>/.env`
+## Embedding Provider Configuration
+
+Embedding provider configuration can be set at multiple levels (in priority order):
+
+1. **Environment variables** (highest priority)
+   - OpenAI: `OPENAI_API_KEY`
+   - Azure OpenAI: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT_ID`, `AZURE_OPENAI_API_VERSION`
+2. **Project-specific**: Stored in `projects/<project>/project.json`
 3. **Global config**: `~/.config/mcp-docs/config.json` (Linux/macOS) or `%APPDATA%/mcp-docs/config.json` (Windows)
 
-Use `mcp-docs configure` to manage API keys.
+### Supported Providers
+
+- **OpenAI**: Direct OpenAI API access
+  - Requires: API key
+  - Default model: `text-embedding-3-small`
+  
+- **Azure OpenAI**: Azure-hosted OpenAI models
+  - Requires: API key, endpoint URL, deployment ID
+  - Optional: API version (default: `2024-02-15-preview`)
+  - Ideal for organizations with Azure subscriptions
+
+Use `mcp-docs configure` to manage provider configuration. Each project can use a different provider, or you can set a global default.
 
 ## How It Works
 
 1. **Scraping**: Uses Playwright to render JavaScript-heavy documentation sites and extract content
 2. **Cleaning**: Removes navigation, headers, and other non-content elements
 3. **Chunking**: Splits content into manageable chunks for embedding
-4. **Embedding**: Generates embeddings using OpenAI's `text-embedding-3-small` model
+4. **Embedding**: Generates embeddings using your configured provider (OpenAI or Azure OpenAI)
 5. **Storage**: Stores embeddings and metadata in ChromaDB
 6. **MCP Server**: Generates an MCP server with a `search_docs` tool for semantic search
 
@@ -227,7 +308,7 @@ The generated MCP server exposes a `search_docs` tool that:
 - Returns top-k matching document chunks with metadata
 - Provides semantic search over the indexed documentation
 
-The server uses FastMCP and runs in SSE (Server-Sent Events) mode for compatibility with MCP clients.
+The server uses FastMCP and runs in SSE (Server-Sent Events) mode for compatibility with MCP clients like VS Code's MCP extension.
 
 ## Development
 
@@ -251,7 +332,9 @@ ruff check src/
 ## Requirements
 
 - Python 3.8+
-- OpenAI API key
+- Embedding provider credentials:
+  - OpenAI API key, OR
+  - Azure OpenAI (API key, endpoint, deployment ID)
 - Playwright (with Chromium browser)
 - ChromaDB
 
@@ -259,7 +342,6 @@ See `pyproject.toml` for complete dependency list.
 
 ## Limitations
 
-- Currently supports OpenAI embeddings only
 - Uses ChromaDB as the only vector store
 - Requires JavaScript rendering (Playwright) for scraping
 - No built-in BM25/hybrid search (semantic search only)
