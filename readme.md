@@ -1,319 +1,276 @@
-# MCP-Docs — turn any docs site into an MCP server
+# MCP-Docs — Turn any docs site into an MCP server
 
-Lightweight, extensible Python package that scrapes any documentation site, normalizes pages, builds searchable indexes (BM25 + vector search), and exposes an MCP-style API so LLMs / agent crews can query docs with provenance.
+A Python package that scrapes documentation sites, indexes them with embeddings, and exposes them as MCP (Model Context Protocol) servers for LLM integration.
 
-> Note: this project intentionally does not include a hosted embedding service. Supported embedding providers: OpenAI, HuggingFace (inference API), and local sentence-transformers. Add more providers via the EmbeddingProvider interface.
+## Features
 
-## Features (short)
-
--   Scrape & normalize docs (Docusaurus, GitBook, generic static HTML, GitHub READMEs)
--   Store canonical page JSONs in SQLite/DuckDB
--   Keyword search (BM25) + semantic search using embeddings + vector DB
--   Extensible embedding providers (OpenAI, HF, local ST)
--   VectorStore adapters (Qdrant, Weaviate, Chroma, Pinecone, Redis)
--   FastAPI MCP endpoints (list_pages, get_page, search, examples, ask_docs, …)
--   Typer-based CLI (`mcp-docs`) for lifecycle: init, add, scrape, index, serve, search, export
--   Designed with SOLID principles — easy to extend & test
--   Local-first defaults so you can run without external keys
-
-## Quickstart (5 minutes)
-
-POSIX / macOS / WSL
-
-```bash
-# 1. clone
-git clone https://github.com/yourorg/mcp-docs.git
-cd mcp-docs
-
-# 2. create virtualenv and install (editable)
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-
-# 3. init project
-mcp-docs init --dir my-mcp
-cd my-mcp
-
-# 4. add a docs site
-mcp-docs add https://react.dev --name react-docs --adapter auto
-
-# 5. scrape
-mcp-docs scrape react-docs --concurrency 6
-
-# 6. index (semantic using local sentence-transformers by default)
-mcp-docs index react-docs --method hybrid --embed-provider local_st
-
-# 7. serve
-mcp-docs serve --port 8080
-# Open http://localhost:8080/docs for FastAPI swagger UI
-```
-
-Windows (PowerShell)
-
-```powershell
-# 1. clone
-git clone https://github.com/yourorg/mcp-docs.git
-cd mcp-docs
-
-# 2. create virtualenv and install (editable)
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-
-# proceed as above
-```
+- **Web Scraping**: Uses Playwright to scrape JavaScript-rendered documentation sites
+- **Semantic Search**: Indexes documentation with OpenAI embeddings for semantic search
+- **Vector Storage**: Uses ChromaDB for persistent vector storage
+- **MCP Server**: Automatically generates and runs MCP servers for each documentation project
+- **Project-Based**: Organizes documentation sites as separate projects
+- **CLI Tool**: Simple command-line interface for managing projects
 
 ## Installation
 
-Install from PyPI (when published) or directly from source:
+### From Source
 
 ```bash
-# from PyPI
-pip install mcp-docs
+# Clone the repository
+git clone https://github.com/yourorg/mcp-docs.git
+cd mcp-docs
 
-# or from git (dev)
-pip install -e "git+https://github.com/yourorg/mcp-docs.git#egg=mcp-docs"
+# Create virtual environment
+python -m venv .venv
 
-# development extras (tests, linting)
+# Activate virtual environment
+# On Windows (PowerShell):
+.\.venv\Scripts\Activate.ps1
+# On macOS/Linux:
+source .venv/bin/activate
+
+# Install in editable mode
 pip install -e ".[dev]"
+
+# Install Playwright browsers
+playwright install chromium
 ```
 
-## Example `mcp.yaml` (project config)
+### Dependencies
 
-```yaml
-project:
-    name: my-mcp
-    data_dir: data
-    db: sqlite
-    db_path: data/mcp.db
+The project requires:
+- Python 3.8+
+- OpenAI API key (for embeddings)
+- Playwright (for web scraping)
+- ChromaDB (for vector storage)
 
-embeddings:
-    provider: local_st # openai | hf | local_st
-    providers:
-        openai:
-            api_key_env: OPENAI_API_KEY
-            model: text-embedding-3-small
-        hf:
-            api_token_env: HF_API_TOKEN
-            model: sentence-transformers/all-MiniLM-L6-v2
-        local_st:
-            model: all-MiniLM-L6-v2
-            cache_dir: ~/.cache/mcp-docs
+## Quick Start
 
-vector_store:
-    provider: qdrant # qdrant | weaviate | chroma | pinecone | redis
-    qdrant:
-        url: 'http://localhost:6333'
-        collection: 'default'
-```
+### 1. Configure API Key
 
-Important: do not store API keys in the config file. Use environment variables (OPENAI_API_KEY, HF_API_TOKEN) or a secret manager.
-
-## CLI reference (high level)
-
-```
-mcp-docs init [--dir DIR] [--force]
-mcp-docs add <URL> [--name NAME] [--adapter ADAPTER]
-mcp-docs remove <name_or_id> [--purge]
-mcp-docs list
-mcp-docs scrape <site> [--concurrency N] [--depth D]
-mcp-docs index <site> [--method bm25|embed|hybrid] [--embed-provider local_st|openai|hf]
-mcp-docs serve [--host HOST] [--port PORT] [--site SITE] [--reload]
-mcp-docs search <query> [--site SITE] [--topk N] [--semantic]
-mcp-docs get <slug_or_url> [--site SITE] [--format json|html|text]
-mcp-docs examples <query> [--language LANG] [--site SITE]
-mcp-docs summarize <slug_or_url> [--site SITE] [--length short|medium|long]
-mcp-docs compare <slug1> <slug2> [--site SITE]
-mcp-docs export <site> --format [json|ndjson|duckdb|sqlite] --out PATH
-mcp-docs config [--show|--edit]
-mcp-docs version
-```
-
-Use `--json` on most commands for machine-friendly output.
-
-## Package API (Python)
-
-Programmatic usage via the `MCP` class:
-
-```python
-from mcp_docs import MCP
-
-m = MCP.load_project("path/to/my-mcp")
-m.add_site("https://react.dev", name="react-docs")
-m.scrape("react-docs")
-m.index("react-docs", method="hybrid", embed_provider="local_st")
-
-# query programmatically
-results = m.search("useMemo vs useCallback", topk=8, semantic=True)
-page = m.get_page("/learn/state")
-examples = m.find_code_examples("debounce", language="js")
-answer = m.ask_docs("How do I debounce in React?", site="react-docs", topk=6)
-```
-
-### How `ask_docs` works (RAG workflow)
-
-1. Embed the user query via the configured `EmbeddingProvider`.
-2. Use the configured `VectorStore` to perform ANN query (top-k).
-3. Optionally rerank candidates (cross-encoder) or re-score with BM25 hybrid.
-4. Build a provenance-aware context (snippets + page metadata).
-5. Call the user-configured LLM with a RAG prompt and return `{answer, citations}`.
-
-This workflow is modular: embedding, vector store, and LLM calls are pluggable via interfaces so you can swap providers without changing retrieval logic.
-
-## Key code snippets
-
-EmbeddingProvider interface (ABC)
-
-```python
-# mcp_docs/embeddings.py
-from abc import ABC, abstractmethod
-from typing import List, Dict
-
-class EmbeddingProvider(ABC):
-    @abstractmethod
-    def embed(self, texts: List[str]) -> List[List[float]]:
-        """Return list of vectors for given texts."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def embed_batch(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
-        """Optional optimized batch method."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def info(self) -> Dict:
-        """Return metadata: name, model, dims."""
-        raise NotImplementedError
-```
-
-Provider registry (factory)
-
-```python
-# mcp_docs/provider_registry.py
-from typing import Dict, Type
-from .embeddings import EmbeddingProvider
-
-class ProviderRegistry:
-    def __init__(self):
-        self._impls: Dict[str, Type[EmbeddingProvider]] = {}
-
-    def register(self, name: str, impl_cls: Type[EmbeddingProvider]):
-        self._impls[name] = impl_cls
-
-    def get(self, name: str, **kwargs) -> EmbeddingProvider:
-        impl = self._impls.get(name)
-        if not impl:
-            raise KeyError(f"Embedding provider '{name}' not registered")
-        return impl(**kwargs)
-```
-
-VectorStore abstraction
-
-```python
-# mcp_docs/vector_store.py
-from abc import ABC, abstractmethod
-from typing import List, Dict
-
-class VectorStore(ABC):
-    @abstractmethod
-    def upsert(self, ids: List[str], vectors: List[List[float]], metas: List[Dict]):
-        pass
-
-    @abstractmethod
-    def query(self, vector: List[float], topk: int = 10) -> List[Dict]:
-        """Return list of hits: {id, score, meta, payload_text}"""
-        pass
-
-    @abstractmethod
-    def delete_collection(self):
-        pass
-```
-
-Concrete adapters implement Qdrant, Weaviate, Chroma, etc.
-
-Example: simple `ask_docs` sketch
-
-```python
-# mcp_docs/ask.py
-def ask_docs(mcp: MCP, question: str, site: str, topk=8, embed_provider="local_st"):
-    provider = mcp.provider_registry.get(embed_provider)
-    q_vec = provider.embed([question])[0]
-    store = mcp.vectorstore_for_site(site)
-    hits = store.query(q_vec, topk=topk)
-
-    # build context
-    context = "\n\n".join([f"{h['meta']['title']}\n{h['payload_text']}" for h in hits])
-
-    # call user-configured LLM (mcp.llm.ask(...)) with prompt + context
-    answer = mcp.llm.ask(question, context)
-    return {"answer": answer, "sources": [h['meta'] for h in hits]}
-```
-
-## Storage & Indexing notes
-
-Pages are stored in canonical JSON with fields: `id`, `url`, `slug`, `title`, `headings`, `content_text`, `content_html`, `code_blocks`, `last_scraped`.
-
-Indexing pipeline:
-
--   Clean and chunk page text (configurable chunk size & overlap).
--   Compute embeddings for chunks via `EmbeddingProvider`.
--   Upsert vectors into `VectorStore` with chunk-level metadata (page id, heading, offset).
--   Optionally build a BM25 index for hybrid retrieval.
-
-## Running a local vector DB (Qdrant example)
-
-docker-compose.yml (quick snippet):
-
-```yaml
-version: '3.8'
-services:
-    qdrant:
-        image: qdrant/qdrant:latest
-        ports:
-            - '6333:6333'
-        volumes:
-            - qdrant_data:/qdrant/storage
-volumes:
-    qdrant_data:
-```
-
-Start:
+Set up your OpenAI API key:
 
 ```bash
-docker compose up -d
+mcp-docs configure
 ```
 
-Then set `vector_store.provider = qdrant` and `url: http://localhost:6333` in `mcp.yaml`.
+Or set it as an environment variable:
 
-## Security & ethics
+```bash
+# Windows (PowerShell)
+$env:OPENAI_API_KEY="sk-your-key-here"
 
--   Respect `robots.txt` and the target site's terms of service.
--   Never commit API keys to the repo. Use environment variables.
--   Secure MCP servers serving private docs (TLS, API keys, internal network).
--   Provide clear user consent and privacy statements before offering optional hosted services.
+# macOS/Linux
+export OPENAI_API_KEY="sk-your-key-here"
+```
 
-## Testing & CI
+### 2. Add a Documentation Project
 
--   Unit tests mock embedding and vector store providers.
--   Integration tests use Dockerized Qdrant/Weaviate and small static docs fixtures.
+Create a new project for a documentation site:
 
-Run tests:
+```bash
+mcp-docs add-project my-docs https://docs.example.com
+```
+
+This creates a project directory at `projects/my-docs/` with:
+- `project.json` - Project configuration
+- `data/` - Data directory
+- `logs/` - Log files directory
+
+### 3. Index the Documentation
+
+Scrape and index the documentation:
+
+```bash
+mcp-docs index my-docs --max-pages 200 --max-depth 5
+```
+
+This will:
+- Scrape pages from the documentation site (up to `max-pages`)
+- Clean and chunk the content
+- Generate embeddings using OpenAI
+- Store embeddings in ChromaDB
+
+### 4. Start the MCP Server
+
+Start the MCP server for your project:
+
+```bash
+mcp-docs start my-docs
+```
+
+The server will run and expose a `search_docs` tool that can be used by MCP clients.
+
+## CLI Commands
+
+### `add-project <name> <url>`
+
+Create a new documentation project.
+
+```bash
+mcp-docs add-project react-docs https://react.dev
+```
+
+### `index <project_name> [options]`
+
+Index a documentation project.
+
+**Options:**
+- `--max-pages <N>`: Maximum number of pages to scrape (default: 200)
+- `--max-depth <N>`: Maximum crawl depth (default: 5)
+
+```bash
+mcp-docs index react-docs --max-pages 100 --max-depth 3
+```
+
+### `start <project_name> [options]`
+
+Start the MCP server for a project.
+
+**Options:**
+- `--port <PORT>`: Port for MCP server (optional, depends on client)
+
+```bash
+mcp-docs start react-docs
+```
+
+### `configure [options]`
+
+Configure API keys and settings.
+
+**Options:**
+- `--api-key <KEY>`: Set API key directly
+- `--project <NAME>`: Configure for specific project
+- `--global`: Save to global config (default)
+- `--show`: Show current configuration
+- `--unset`: Remove stored API key
+
+```bash
+# Interactive configuration
+mcp-docs configure
+
+# Set API key directly
+mcp-docs configure --api-key sk-...
+
+# Configure for specific project
+mcp-docs configure --project my-docs --api-key sk-...
+
+# Show current config
+mcp-docs configure --show
+```
+
+## Project Structure
+
+```
+mcp-docs/
+├── projects/
+│   ├── my-docs/
+│   │   ├── project.json      # Project configuration
+│   │   ├── server.py          # Auto-generated MCP server
+│   │   ├── data/              # Data directory
+│   │   └── logs/              # Log files
+│   └── ...
+├── indexes/                    # ChromaDB indexes
+│   └── <collection-hash>/
+└── src/                        # Source code
+    ├── cli.py                  # CLI implementation
+    ├── config.py               # Configuration management
+    ├── indexer/                # Indexing pipeline
+    │   ├── scrapper.py         # Web scraper
+    │   ├── cleaner.py          # Text cleaning
+    │   ├── chunker.py          # Text chunking
+    │   ├── embedder.py         # Embedding generation
+    │   └── db_writer.py        # Database writing
+    ├── embeddings/             # Embedding providers
+    │   └── openai_provider.py  # OpenAI provider
+    └── vectorstores/           # Vector store implementations
+        └── chrome_store.py     # ChromaDB store
+```
+
+## Project Configuration
+
+Each project has a `project.json` file:
+
+```json
+{
+  "name": "my-docs",
+  "url": "https://docs.example.com",
+  "collection_name": "abc123...",
+  "chroma_path": "/path/to/indexes/abc123..."
+}
+```
+
+## API Key Configuration
+
+API keys can be configured at multiple levels (in priority order):
+
+1. **Environment variable**: `OPENAI_API_KEY`
+2. **Project-specific**: `projects/<project>/.env`
+3. **Global config**: `~/.config/mcp-docs/config.json` (Linux/macOS) or `%APPDATA%/mcp-docs/config.json` (Windows)
+
+Use `mcp-docs configure` to manage API keys.
+
+## How It Works
+
+1. **Scraping**: Uses Playwright to render JavaScript-heavy documentation sites and extract content
+2. **Cleaning**: Removes navigation, headers, and other non-content elements
+3. **Chunking**: Splits content into manageable chunks for embedding
+4. **Embedding**: Generates embeddings using OpenAI's `text-embedding-3-small` model
+5. **Storage**: Stores embeddings and metadata in ChromaDB
+6. **MCP Server**: Generates an MCP server with a `search_docs` tool for semantic search
+
+## MCP Server Integration
+
+The generated MCP server exposes a `search_docs` tool that:
+
+- Accepts a text query or pre-computed embedding
+- Returns top-k matching document chunks with metadata
+- Provides semantic search over the indexed documentation
+
+The server uses FastMCP and runs in SSE (Server-Sent Events) mode for compatibility with MCP clients.
+
+## Development
+
+### Running Tests
 
 ```bash
 pytest
 ```
 
-## Roadmap
+### Code Style
 
--   Add more adapters (Docusaurus/Next.js docs app optimizations)
--   Cross-encoder re-ranker option
--   Plugin system for custom normalizers
--   Official PyPI release & GitHub Actions for builds
--   Explorer UI (optional web-based dashboard)
+The project uses:
+- `black` for code formatting
+- `ruff` for linting
+
+```bash
+black src/
+ruff check src/
+```
+
+## Requirements
+
+- Python 3.8+
+- OpenAI API key
+- Playwright (with Chromium browser)
+- ChromaDB
+
+See `pyproject.toml` for complete dependency list.
+
+## Limitations
+
+- Currently supports OpenAI embeddings only
+- Uses ChromaDB as the only vector store
+- Requires JavaScript rendering (Playwright) for scraping
+- No built-in BM25/hybrid search (semantic search only)
 
 ## Contributing
 
-Contributions are welcome — open issues for feature requests and bug reports. PRs should include tests and adhere to code style (black + isort + flake8).
+Contributions are welcome! Please:
+
+1. Open an issue for feature requests or bug reports
+2. Submit pull requests with tests
+3. Follow code style (black + ruff)
 
 ## License
 

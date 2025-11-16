@@ -3,10 +3,11 @@
 CLI for MCP docs projects.
 
 Commands:
-  - add_project <name> <url>
-  - index <project_name>
-  - start <project_name> [--port]
-  - configure [--api-key KEY] [--project PROJECT] [--global]
+  - add-project <name> <url>                    Create a new project
+  - index <project_name> [--max-pages N] [--max-depth N]  Index documentation
+  - start <project_name> [--port PORT]         Start MCP server
+  - configure [options]                         Configure API keys
+  - list                                        List all projects
 """
 
 from typing import Optional
@@ -128,11 +129,20 @@ except Exception:
     print("✓ Created new collection: " + COLLECTION_NAME, file=sys.stderr)
 
 # create MCP server
-try:
-    mcp = FastMCP("{project_name} MCP Server")
-except Exception:
-    # If FastMCP is actually a Server class fallback, wrap minimal decorator
-    mcp = FastMCP("{project_name} MCP Server")  # type: ignore
+# Get port from environment variable if set
+mcp_port = os.getenv("MCP_PORT")
+if mcp_port:
+    try:
+        mcp = FastMCP("{project_name} MCP Server", port=int(mcp_port))
+    except Exception:
+        # If FastMCP is actually a Server class fallback, wrap minimal decorator
+        mcp = FastMCP("{project_name} MCP Server", port=int(mcp_port))  # type: ignore
+else:
+    try:
+        mcp = FastMCP("{project_name} MCP Server")
+    except Exception:
+        # If FastMCP is actually a Server class fallback, wrap minimal decorator
+        mcp = FastMCP("{project_name} MCP Server")  # type: ignore
 
 
 async def _embed_query(text: str) -> List[float]:
@@ -195,9 +205,13 @@ async def search_docs(query: Any, top_k: int = 5) -> Any:
 
 def main():
     # run MCP as SSE server for VSCode integration / clients
+    import sys
+    port = os.getenv("MCP_PORT")
     print("Starting MCP server...", file=sys.stderr)
     print("Collection: " + COLLECTION_NAME, file=sys.stderr)
     print("ChromaDB path: " + CHROMA_PATH, file=sys.stderr)
+    if port:
+        print("Port: " + port, file=sys.stderr)
     print("Server ready. Waiting for requests...", file=sys.stderr)
     print("=" * 50, file=sys.stderr)
     mcp.run(transport="sse")
@@ -208,10 +222,14 @@ if __name__ == "__main__":
 '''
 
 @APP.command()
-def add_project(name: str = typer.Argument(..., help="collection name"),
-                url: str = typer.Argument(..., help="root docs URL")):
+def add_project(name: str = typer.Argument(..., help="Project name"),
+                url: str = typer.Argument(..., help="Root documentation URL")):
     """
     Create a new project folder and basic config.
+    
+    Examples:
+        mcp-docs add-project react-docs https://react.dev
+        mcp-docs add-project mydocs https://docs.example.com
     """
     import hashlib
 
@@ -281,10 +299,15 @@ def add_project(name: str = typer.Argument(..., help="collection name"),
 
 @APP.command()
 def index(project_name: str = typer.Argument(..., help="project name to index"),
-          max_pages: int = typer.Option(200, help="max pages to scrape"),
-          max_depth: int = typer.Option(5, help="max depth to crawl")):
+          max_pages: int = typer.Option(200, "--max-pages", help="Maximum number of pages to scrape (default: 200)"),
+          max_depth: int = typer.Option(5, "--max-depth", help="Maximum crawl depth (default: 5)")):
     """
     Run the indexer for the given project.
+    
+    Examples:
+        mcp-docs index mydocs
+        mcp-docs index mydocs --max-pages 100
+        mcp-docs index mydocs --max-pages 500 --max-depth 3
     """
     cfg = _load_config(project_name)
     if index_documentation is None:
@@ -335,9 +358,13 @@ def index(project_name: str = typer.Argument(..., help="project name to index"),
 
 @APP.command()
 def start(project_name: str = typer.Argument(..., help="project name to start"),
-          port: Optional[int] = typer.Option(None, help="port used by some MCP clients (optional)")):
+          port: Optional[int] = typer.Option(None, "--port", help="Port for MCP server (optional, for SSE transport)")):
     """
     Generate the project server.py and start it as a subprocess.
+    
+    Examples:
+        mcp-docs start mydocs
+        mcp-docs start mydocs --port 8080
     """
     cfg = _load_config(project_name)
     pdir = _project_dir(project_name)
@@ -364,6 +391,10 @@ def start(project_name: str = typer.Argument(..., help="project name to start"),
     # Start the server in interactive mode (foreground)
     cmd = [sys.executable, str(server_file)]
     env = os.environ.copy()
+    # Pass port via environment variable if provided
+    if port:
+        env["MCP_PORT"] = str(port)
+        typer.echo(f"Starting server on port {port}...")
     # keep existing env so OPENAI_API_KEY flows through if present
     try:
         # Use subprocess.run() to run in foreground/interactive mode
@@ -373,6 +404,55 @@ def start(project_name: str = typer.Argument(..., help="project name to start"),
     except Exception as e:
         typer.echo(f"Failed to start server: {e}")
         raise typer.Exit(1)
+
+
+@APP.command("list")
+def list_projects():
+    """
+    List all available projects and their status.
+    
+    Shows all projects with their configuration, indexing status, and document counts.
+    """
+    if not PROJECTS_DIR.exists():
+        typer.echo("No projects directory found.")
+        return
+    
+    projects = [p for p in PROJECTS_DIR.iterdir() if p.is_dir() and (p / "project.json").exists()]
+    
+    if not projects:
+        typer.echo("No projects found. Create one with 'mcp-docs add-project <name> <url>'")
+        return
+    
+    typer.echo(f"Found {len(projects)} project(s):\n")
+    typer.echo("=" * 70)
+    
+    for project_dir in sorted(projects):
+        try:
+            cfg = load_project_config(project_dir.name, PROJECTS_DIR)
+            typer.echo(f"\n📁 Project: {cfg.get('name', project_dir.name)}")
+            typer.echo(f"   URL: {cfg.get('url', 'N/A')}")
+            typer.echo(f"   Collection: {cfg.get('collection_name', 'N/A')}")
+            typer.echo(f"   Path: {project_dir}")
+            
+            # Check if indexed
+            chroma_path = Path(cfg.get('chroma_path', ''))
+            if chroma_path.exists():
+                try:
+                    import chromadb
+                    client = chromadb.PersistentClient(path=str(chroma_path))
+                    collection = client.get_collection(cfg.get('collection_name'))
+                    count = collection.count()
+                    typer.echo(f"   Status: ✓ Indexed ({count} documents)")
+                except Exception:
+                    typer.echo(f"   Status: ⚠ Index may be incomplete")
+            else:
+                typer.echo(f"   Status: ✗ Not indexed")
+                
+        except Exception as e:
+            typer.echo(f"\n📁 Project: {project_dir.name}")
+            typer.secho(f"   ⚠ Error loading config: {e}", fg=typer.colors.YELLOW)
+    
+    typer.echo("\n" + "=" * 70)
 
 
 @APP.command()
