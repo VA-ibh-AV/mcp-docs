@@ -4,13 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-docs"
-version = "0.1.0"
+version = "0.1.1"
 description = "Turn any documentation site into an MCP server"
 requires-python = ">=3.8"
 readme = "readme.md"
+license = {text = "MIT"}
 authors = [
     {name = "mcp-docs contributors"}
 ]
+keywords = ["mcp", "documentation", "indexing", "vector-search", "embeddings", "chromadb"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -21,6 +23,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Documentation",
 ]
 
 dependencies = [
@@ -49,10 +53,13 @@ dev = [
 mcp-docs = "src.cli:APP"
 
 [tool.setuptools]
-packages = ["src"]
-
-[tool.setuptools.package-dir]
-"" = "."
+packages = [
+    "src",
+    "src.indexer",
+    "src.embeddings",
+    "src.vectorstores",
+    "src.utils",
+]
 
 [tool.pylance]
 pythonPath = "src"

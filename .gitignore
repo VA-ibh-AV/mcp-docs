@@ -48,6 +48,8 @@ build/
 dist/
 *.egg-info/
 .eggs/
+*.whl
+*.tar.gz
 
 # --- Logs ---
 *.log
