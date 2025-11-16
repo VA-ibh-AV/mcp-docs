@@ -328,34 +328,48 @@ def prompt_api_key() -> str:
     return config['api_key']
 
 
-def get_or_prompt_api_key(project_name: Optional[str] = None, 
-                          projects_dir: Optional[Path] = None,
-                          interactive: bool = True) -> Optional[str]:
+def get_or_prompt_provider_config(project_name: Optional[str] = None,
+                                  projects_dir: Optional[Path] = None,
+                                  interactive: bool = True,
+                                  provider_name: Optional[str] = None) -> Optional[dict]:
     """
-    Get API key from config or prompt user if not found.
+    Get provider config from config or prompt user if not found.
     
     Args:
         project_name: Optional project name
         projects_dir: Optional projects directory
-        interactive: If True, prompt user if key not found
+        interactive: If True, prompt user if config not found
+        provider_name: Optional provider name to prompt for
     
     Returns:
-        API key or None if not found and not interactive
+        Provider config dict or None if not found and not interactive
     """
-    api_key = get_api_key(project_name, projects_dir)
+    config = get_provider_config(project_name, projects_dir)
     
-    if not api_key and interactive:
-        api_key = prompt_api_key()
-        if api_key:
+    if not config and interactive:
+        config = prompt_provider_config(provider_name)
+        if config:
             # Save to the most appropriate location
             if project_name and projects_dir:
-                save_api_key(api_key, scope='project', project_name=project_name, projects_dir=projects_dir)
-                print(f"✓ API key saved to project configuration")
+                save_provider_config(config, scope='project', project_name=project_name, projects_dir=projects_dir)
+                print(f"✓ Provider configuration saved to project configuration")
             else:
-                save_api_key(api_key, scope='global')
-                print(f"✓ API key saved to global configuration")
+                save_provider_config(config, scope='global')
+                print(f"✓ Provider configuration saved to global configuration")
     
-    return api_key
+    return config
+
+
+def get_or_prompt_api_key(project_name: Optional[str] = None, 
+                          projects_dir: Optional[Path] = None,
+                          interactive: bool = True) -> Optional[str]:
+    """
+    Get API key from config or prompt user if not found (backward compatibility).
+    """
+    config = get_or_prompt_provider_config(project_name, projects_dir, interactive, 'openai')
+    if config and config.get('provider') == 'openai':
+        return config.get('api_key')
+    return None
 
 
 def load_project_config(project_name: str, projects_dir: Path) -> dict:
