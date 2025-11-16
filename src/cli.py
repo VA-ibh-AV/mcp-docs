@@ -6,6 +6,7 @@ Commands:
   - add_project <name> <url>
   - index <project_name>
   - start <project_name> [--port]
+  - configure [--api-key KEY] [--project PROJECT] [--global]
 """
 
 from typing import Optional
@@ -19,6 +20,10 @@ import typer
 
 from src.indexer import index_documentation
 from src.embeddings import OpenAIEmbeddingProvider
+from src.config import (
+    get_api_key, save_api_key, get_or_prompt_api_key,
+    load_project_config, save_project_config
+)
 
 
 APP = typer.Typer()
@@ -36,18 +41,13 @@ def _project_config_path(name: str) -> Path:
 
 
 def _save_config(name: str, data: dict):
-    p = _project_dir(name)
-    p.mkdir(parents=True, exist_ok=True)
-    with open(_project_config_path(name), "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    """Save project config using the config module."""
+    save_project_config(name, PROJECTS_DIR, data)
 
 
 def _load_config(name: str) -> dict:
-    cfgp = _project_config_path(name)
-    if not cfgp.exists():
-        typer.echo(f"Project '{name}' not found. Please run `add_project` first.")
-        raise typer.Exit(1)
-    return json.loads(cfgp.read_text(encoding="utf-8"))
+    """Load project config using the config module."""
+    return load_project_config(name, PROJECTS_DIR)
 
 
 SERVER_TEMPLATE = r'''# Auto-generated MCP server for project: {project_name}
@@ -76,13 +76,42 @@ with open(CONFIG_PATH, "r", encoding="utf-8") as f:
     config = json.load(f)
 CHROMA_PATH = config.get("chroma_path", os.path.join(PROJECT_DIR, "data", "chroma"))
 COLLECTION_NAME = config.get("collection_name", "{collection_name}")
+
+# Resolve API key from multiple sources (env var -> project .env -> global config)
+import sys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# initialize OpenAI
-import sys
+# Try loading from project .env file
 if not OPENAI_API_KEY:
-    print("ERROR: OpenAI API key not provided. Set OPENAI_API_KEY env var.", file=sys.stderr)
-    raise RuntimeError("OpenAI API key not provided. Set OPENAI_API_KEY env var.")
+    env_path = os.path.join(PROJECT_DIR, ".env")
+    if os.path.exists(env_path):
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(env_path, override=False)
+            OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+        except ImportError:
+            pass
+
+# Try loading from global config
+if not OPENAI_API_KEY:
+    try:
+        if os.name == 'nt':  # Windows
+            config_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'mcp-docs')
+        else:  # Unix-like
+            config_dir = os.path.join(os.path.expanduser('~'), '.config', 'mcp-docs')
+        global_config_path = os.path.join(config_dir, 'config.json')
+        if os.path.exists(global_config_path):
+            with open(global_config_path, 'r', encoding='utf-8') as f:
+                global_config = json.load(f)
+                OPENAI_API_KEY = global_config.get('openai_api_key') or global_config.get('OPENAI_API_KEY')
+    except Exception:
+        pass
+
+# Initialize OpenAI
+if not OPENAI_API_KEY:
+    print("ERROR: OpenAI API key not found.", file=sys.stderr)
+    print("Please set OPENAI_API_KEY environment variable or run 'mcp-docs configure'", file=sys.stderr)
+    raise RuntimeError("OpenAI API key not provided. Run 'mcp-docs configure' to set it up.")
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 print("✓ OpenAI API key configured", file=sys.stderr)
@@ -245,8 +274,9 @@ def add_project(name: str = typer.Argument(..., help="collection name"),
     typer.echo(f"   Collection name: {collection_name}")
     typer.echo(f"   ChromaDB path: {chroma_path}")
     typer.echo(f"\nNext steps:")
-    typer.echo(f"   1. Run 'index {name}' to index the documentation")
-    typer.echo(f"   2. Run 'start {name}' to start the MCP server")
+    typer.echo(f"   1. Run 'mcp-docs configure' to set up your API key (if not already done)")
+    typer.echo(f"   2. Run 'mcp-docs index {name}' to index the documentation")
+    typer.echo(f"   3. Run 'mcp-docs start {name}' to start the MCP server")
 
 
 @APP.command()
@@ -274,14 +304,17 @@ def index(project_name: str = typer.Argument(..., help="project name to index"),
     
     typer.echo(f"Indexing project {project_name} from {url} into {output_dir}")
     
+    # Get API key using config module
+    api_key = get_or_prompt_api_key(project_name=project_name, projects_dir=PROJECTS_DIR, interactive=True)
+    if not api_key:
+        typer.secho("Error: OpenAI API key is required.", fg=typer.colors.RED)
+        typer.echo("Run 'mcp-docs configure' to set up your API key.")
+        raise typer.Exit(1)
+    
     # Create embedding provider (default to OpenAI)
     try:
-        provider = OpenAIEmbeddingProvider()
+        provider = OpenAIEmbeddingProvider(api_key=api_key)
         typer.echo(f"Using embedding provider: {provider.info()['name']} (model: {provider.info()['model']})")
-    except ValueError as e:
-        typer.secho(f"Error: {e}", fg=typer.colors.RED)
-        typer.echo("Please set OPENAI_API_KEY environment variable or configure an embedding provider.")
-        raise typer.Exit(1)
     except Exception as e:
         typer.secho(f"Failed to initialize embedding provider: {e}", fg=typer.colors.RED)
         raise typer.Exit(1)
@@ -342,5 +375,119 @@ def start(project_name: str = typer.Argument(..., help="project name to start"),
         raise typer.Exit(1)
 
 
+@APP.command()
+def configure(
+    api_key: Optional[str] = typer.Option(None, "--api-key", "-k", help="OpenAI API key to save"),
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="Save key for specific project"),
+    global_scope: bool = typer.Option(False, "--global", "-g", help="Save to global config (default: project-specific)"),
+    show: bool = typer.Option(False, "--show", help="Show current configuration"),
+    unset: bool = typer.Option(False, "--unset", help="Remove stored API key")
+):
+    """
+    Configure API keys for mcp-docs.
+    
+    Examples:
+        mcp-docs configure                    # Interactive setup
+        mcp-docs configure --api-key sk-...   # Save key directly
+        mcp-docs configure --project mydocs   # Save for specific project
+        mcp-docs configure --global           # Save to global config
+        mcp-docs configure --show             # Show current config
+        mcp-docs configure --unset            # Remove stored key
+    """
+    if show:
+        # Show current configuration
+        typer.echo("Current API key configuration:")
+        typer.echo("=" * 50)
+        
+        # Check environment variable
+        env_key = os.getenv("OPENAI_API_KEY")
+        if env_key:
+            typer.echo("✓ Environment variable: OPENAI_API_KEY (set)")
+        else:
+            typer.echo("✗ Environment variable: OPENAI_API_KEY (not set)")
+        
+        # Check global config
+        global_key = get_api_key()
+        if global_key and not env_key:  # Only show if not overridden by env
+            typer.echo("✓ Global config: API key found")
+        else:
+            typer.echo("✗ Global config: No API key stored")
+        
+        # Check project configs
+        if project:
+            project_key = get_api_key(project, PROJECTS_DIR)
+            if project_key and not env_key:
+                typer.echo(f"✓ Project '{project}': API key found")
+            else:
+                typer.echo(f"✗ Project '{project}': No API key stored")
+        
+        return
+    
+    if unset:
+        # Remove API key
+        if project:
+            env_path = PROJECTS_DIR / project / ".env"
+            if env_path.exists():
+                env_path.unlink()
+                typer.echo(f"✓ Removed API key for project '{project}'")
+            else:
+                typer.echo(f"No API key found for project '{project}'")
+        else:
+            from src.config import _get_global_config_path
+            config_path = _get_global_config_path()
+            if config_path.exists():
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        config = json.load(f)
+                    config.pop('openai_api_key', None)
+                    config.pop('OPENAI_API_KEY', None)
+                    with open(config_path, 'w', encoding='utf-8') as f:
+                        json.dump(config, f, indent=2)
+                    typer.echo("✓ Removed API key from global config")
+                except Exception as e:
+                    typer.echo(f"Error removing key: {e}")
+            else:
+                typer.echo("No global API key found")
+        return
+    
+    # Save API key
+    if api_key:
+        key = api_key
+    else:
+        # Interactive prompt
+        from src.config import prompt_api_key
+        key = prompt_api_key()
+    
+    if not key:
+        typer.echo("No API key provided.")
+        raise typer.Exit(1)
+    
+    # Determine scope
+    if project:
+        scope = 'project'
+        scope_name = f"project '{project}'"
+    elif global_scope:
+        scope = 'global'
+        scope_name = "global configuration"
+    else:
+        # Default: project if specified, otherwise global
+        if project:
+            scope = 'project'
+            scope_name = f"project '{project}'"
+        else:
+            scope = 'global'
+            scope_name = "global configuration"
+    
+    # Save the key
+    try:
+        saved_path = save_api_key(key, scope=scope, project_name=project, projects_dir=PROJECTS_DIR)
+        typer.echo(f"✓ API key saved to {scope_name}")
+        typer.echo(f"  Location: {saved_path}")
+    except Exception as e:
+        typer.secho(f"Error saving API key: {e}", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     APP()
+
