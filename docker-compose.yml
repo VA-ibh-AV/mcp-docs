@@ -89,11 +89,11 @@ services:
       timeout: 5s
       retries: 5
 
-  # Go Backend
+  # Go Backend - Dev Mode with Hot Reloading
   go-backend:
     build:
       context: ./go-backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: mcp-docs-go-backend
     depends_on:
       postgres:
@@ -111,7 +111,13 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     networks:
       - mcp-docs-network
+    volumes:
+      - ./go-backend:/app
+      - /app/tmp
+      - /app/vendor
     restart: unless-stopped
+    stdin_open: true
+    tty: true
 
   # Frontend (Next.js) - Dev Mode with HMR
   frontend:
