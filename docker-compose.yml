@@ -139,8 +139,9 @@ services:
       - mcp-docs-network
     volumes:
       - ./frontend:/app
-      - /app/node_modules
       - /app/.next
+      # Note: node_modules is NOT in an anonymous volume to allow host-installed packages
+      # If you install packages, rebuild the container: docker-compose build frontend
     restart: unless-stopped
     stdin_open: true
     tty: true
