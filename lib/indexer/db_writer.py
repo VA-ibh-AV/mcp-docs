@@ -1,6 +1,6 @@
 # src/docs_mcp/indexer/db_writer.py
 
-from src.vectorstores.chrome_store import ChromaStore
+from lib.vectorstores.chrome_store import ChromaStore
 from typing import List
 
 

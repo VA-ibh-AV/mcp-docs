@@ -1,6 +1,6 @@
 # src/docs_mcp/indexer/embedder.py
 
-from src.embeddings.provider import EmbeddingProvider
+from lib.embeddings.provider import EmbeddingProvider
 from typing import List
 
 

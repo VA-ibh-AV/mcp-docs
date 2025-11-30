@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-docs"
-version = "0.1.2"
+version = "0.0.1"
 description = "Turn any documentation site into an MCP server"
 requires-python = ">=3.8"
 readme = "readme.md"
@@ -50,19 +50,20 @@ dev = [
 ]
 
 [project.scripts]
-mcp-docs = "src.cli:APP"
+mcp-docs = "cli:APP"
 
 [tool.setuptools]
+package-dir = {"" = ".."}
 packages = [
-    "src",
-    "src.indexer",
-    "src.embeddings",
-    "src.vectorstores",
-    "src.utils",
+    "lib",
+    "lib.indexer",
+    "lib.embeddings",
+    "lib.vectorstores",
+    "lib.utils",
 ]
 
 [tool.pylance]
-pythonPath = "src"
+pythonPath = ".."
 
 [tool.pylint]
 ignore-paths = ["venv", ".venv"]

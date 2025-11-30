@@ -19,9 +19,9 @@ from pathlib import Path
 
 import typer
 
-from src.indexer import index_documentation
-from src.embeddings import OpenAIEmbeddingProvider
-from src.config import (
+from lib.indexer import index_documentation
+from lib.embeddings import OpenAIEmbeddingProvider
+from lib.config import (
     get_api_key, save_api_key, get_or_prompt_api_key,
     load_project_config, save_project_config
 )
@@ -393,8 +393,8 @@ def index(project_name: str = typer.Argument(..., help="project name to index"),
     typer.echo(f"Indexing project {project_name} from {url} into {output_dir}")
     
     # Get provider configuration
-    from src.config import get_or_prompt_provider_config
-    from src.embeddings import AzureOpenAIEmbeddingProvider
+    from lib.config import get_or_prompt_provider_config
+    from lib.embeddings import AzureOpenAIEmbeddingProvider
     
     provider_config = get_or_prompt_provider_config(project_name=project_name, projects_dir=PROJECTS_DIR, interactive=True)
     if not provider_config:
@@ -561,7 +561,7 @@ def configure(
     """
     if show:
         # Show current configuration
-        from src.config import get_provider_config
+        from lib.config import get_provider_config
         
         typer.echo("Current embedding provider configuration:")
         typer.echo("=" * 50)
@@ -593,7 +593,7 @@ def configure(
     
     if unset:
         # Remove provider config
-        from src.config import _get_global_config_path, save_project_config, load_project_config
+        from lib.config import _get_global_config_path, save_project_config, load_project_config
         if project:
             try:
                 project_config = load_project_config(project, PROJECTS_DIR)
@@ -629,7 +629,7 @@ def configure(
         return
     
     # Get provider configuration
-    from src.config import prompt_provider_config, save_provider_config
+    from lib.config import prompt_provider_config, save_provider_config
     
     if provider or api_key or endpoint or deployment_id:
         # Non-interactive mode - build config from options

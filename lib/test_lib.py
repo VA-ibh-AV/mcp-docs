@@ -7,8 +7,9 @@ This replaces the previous crew-based entrypoint and directly calls
 import sys
 import os
 
-# Ensure the package src/ is on the import path so relative imports work.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+# Since we're now inside lib/, we can import directly
+# Add parent directory to path to allow importing lib modules
+sys.path.insert(0, os.path.dirname(__file__))
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -19,7 +20,7 @@ def test_scraper():
     from indexer.scrapper import scrape_site
     from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
     from urllib.parse import urlparse
-    from src.utils.url_filter import is_relevant_docs_url
+    from utils.url_filter import is_relevant_docs_url
     
     # Get URL from command line or use default
     test_url = sys.argv[2] if len(sys.argv) > 2 else "https://platform.openai.com/docs"

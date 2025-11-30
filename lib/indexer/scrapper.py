@@ -8,7 +8,7 @@ except ImportError as e:
     ) from e
 
 from urllib.parse import urljoin, urlparse
-from src.utils.url_filter import is_relevant_docs_url
+from lib.utils.url_filter import is_relevant_docs_url
 
 
 def scrape_site(base_url, max_pages=10, max_depth=3):
