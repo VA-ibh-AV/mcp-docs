@@ -16,7 +16,7 @@ RUN go mod download
 COPY .air.toml* ./
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8005
 
 # Use air to run the application with hot reloading
 CMD ["air", "-c", ".air.toml"]
