@@ -2,6 +2,8 @@
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { linkLogo, linkNav } from "@/lib/link-classes"
+import { Logo } from "@/components/ui/logo"
 
 export default function Navbar() {
   return (
@@ -9,24 +11,19 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
         
         {/* Logo */}
-        <Link href="/" className="font-semibold text-xl">
-          MCP-Docs
-        </Link>
+        <Logo />
 
         {/* Menu */}
         <NavigationMenu>
           <NavigationMenuList className="gap-4">
             <NavigationMenuItem>
-              <Link href="/features">Features</Link>
+              <Link href="/features" className={linkNav}>Features</Link>
             </NavigationMenuItem>
             <NavigationMenuItem>
-              <Link href="/pricing">Pricing</Link>
+              <Link href="/pricing" className={linkNav}>Pricing</Link>
             </NavigationMenuItem>
             <NavigationMenuItem>
-              <Link href="/documentation">Documentation</Link>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <Link href="/about">About</Link>
+              <Link href="/documentation" className={linkNav}>Documentation</Link>
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
