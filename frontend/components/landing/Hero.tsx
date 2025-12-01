@@ -42,8 +42,8 @@ export function Hero() {
 
           {/* Installation Code Box */}
           <div className="max-w-lg mx-auto mt-12 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-900 font-sans text-base font-medium">Get started with our local free library</h3>
+            <div className="flex items-center justify-between mb-4 text-left">
+              <h3 className="text-gray-900 font-sans text-base font-medium"><strong>OR</strong> Get started with our local free library</h3>
               <button
                 onClick={handleCopy}
                 className={cn(
