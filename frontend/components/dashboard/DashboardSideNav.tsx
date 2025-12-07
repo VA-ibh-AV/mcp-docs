@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, Folder, Network, Settings, User, LogOut } from "lucide-react"
+import { LayoutDashboard, Folder, Network, Settings, User, LogOut, CreditCard } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect } from "react"
@@ -31,19 +31,14 @@ const items = [
       icon: LayoutDashboard,
     },
     {
-      title: "Projects",
-      url: "/dashboard/projects",
-      icon: Folder,
-    },
-    {
       title: "Endpoints",
       url: "/dashboard/endpoints",
       icon: Network,
     },
     {
-      title: "Settings",
-      url: "/dashboard/settings",
-      icon: Settings,
+      title: "Billing",
+      url: "/dashboard/billing",
+      icon: CreditCard,
     },
   ]
 
@@ -94,13 +89,13 @@ export default function DashboardSideNav() {
                           asChild 
                           isActive={isActive}
                           className={isActive 
-                            ? "bg-blue-50 text-blue-600 hover:bg-blue-50 hover:text-blue-600 rounded-l-none rounded-r-md" 
+                            ? "bg-gray-100 text-gray-900 hover:bg-gray-100 hover:text-gray-900 rounded-l-none rounded-r-md font-medium" 
                             : "text-gray-700 hover:bg-gray-50"
                           }
                         >
                           <Link href={item.url}>
-                            <item.icon className={isActive ? "text-blue-600" : "text-gray-600"} size={20} />
-                            <span className={isActive ? "text-blue-600 font-medium" : "text-gray-700"}>{item.title}</span>
+                            <item.icon className={isActive ? "text-gray-900" : "text-gray-600"} size={20} />
+                            <span className={isActive ? "text-gray-900 font-medium" : "text-gray-700"}>{item.title}</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
