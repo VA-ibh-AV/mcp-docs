@@ -1,6 +1,5 @@
 "use client";
 import { FcGoogle } from "react-icons/fc";
-import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import {
   Form,
@@ -25,11 +24,13 @@ import { SignInSchema, signInSchema } from "@/schemas/signIn.schema";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAppDispatch } from "@/lib/hooks";
+import { setUser, setIsAuthenticated, setAccessToken, setRefreshToken, Role } from "@/features/auth/authSlice";
 
 const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-
+  const dispatch = useAppDispatch();
   const form = useForm<SignInSchema>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -41,6 +42,15 @@ const LoginForm = () => {
   const onSubmit = async (data: SignInSchema) => {
     console.log(data);
     
+    // for testing purposes
+    dispatch(setUser({
+      email: data.email,
+      name: data.email,
+      role: Role.USER,
+    }));
+    dispatch(setIsAuthenticated(true));
+    dispatch(setAccessToken("test_access_token"));
+    dispatch(setRefreshToken("test_refresh_token"));
     // Set the access token in cookies for testing purposes
     // Note: httpOnly cookies cannot be set from client-side, so using regular cookie for testing
     const maxAge = 60 * 60 * 24 * 30; // 30 days
