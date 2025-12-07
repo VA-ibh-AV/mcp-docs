@@ -56,9 +56,8 @@ export function EndpointCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${config.dotColor}`} />
+      <CardContent className="space-y-4 pt-0">
+        <div className="flex items-center gap-2 -mt-4">
           <Badge variant={config.variant}>{config.label}</Badge>
         </div>
         <div className="space-y-2">

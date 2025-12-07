@@ -20,8 +20,8 @@ export function SubscriptionCard({
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Subscription Status</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-2">
+      <CardContent className="space-y-4 pt-0">
+        <div className="flex items-center gap-2 -mt-4">
           <Badge variant="default" className="bg-blue-600 text-white">
             <Star className="mr-1 h-3 w-3" />
             {planName}

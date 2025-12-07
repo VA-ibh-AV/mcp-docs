@@ -10,7 +10,7 @@ interface WelcomeCardProps {
 
 export function WelcomeCard({ userName = "Alex" }: WelcomeCardProps) {
   return (
-    <Card className="bg-gradient-to-r from-blue-600 to-blue-400 text-white border-0 shadow-lg">
+    <Card className="bg-gradient-to-r from-blue-600 to-blue-400 text-white border-0 shadow-lg h-full">
       <CardContent className="flex items-center justify-between p-6">
         <div className="flex flex-col gap-2">
           <h2 className="text-2xl font-bold">Welcome back, {userName}!</h2>
