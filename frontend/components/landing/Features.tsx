@@ -44,7 +44,7 @@ const features: Feature[] = [
 
 export default function Features() {
   return (
-    <section className="py-24 px-4 bg-white font-sans">
+    <section id="features" className="py-24 px-4 bg-white font-sans">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-16">

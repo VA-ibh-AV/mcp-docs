@@ -17,10 +17,10 @@ export default function Navbar() {
         <NavigationMenu>
           <NavigationMenuList className="gap-4">
             <NavigationMenuItem>
-              <Link href="/features" className={linkNav}>Features</Link>
+              <Link href="#features" className={linkNav}>Features</Link>
             </NavigationMenuItem>
             <NavigationMenuItem>
-              <Link href="/pricing" className={linkNav}>Pricing</Link>
+              <Link href="#pricing" className={linkNav}>Pricing</Link>
             </NavigationMenuItem>
             <NavigationMenuItem>
               <Link href="/documentation" className={linkNav}>Documentation</Link>
@@ -34,7 +34,7 @@ export default function Navbar() {
             <Link href="/login">Sign In</Link>
           </Button>
           <Button asChild>
-            <Link href="/register">Try Free</Link>
+            <Link href="/login">Try Free</Link>
           </Button>
         </div>
       </div>
