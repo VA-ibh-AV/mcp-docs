@@ -5,6 +5,7 @@ import (
 	"errors"
 	"mcpdocs/models"
 	"mcpdocs/utils"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -23,6 +24,13 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) error {
 	if err := r.db.WithContext(ctx).Create(user).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrUserAlreadyExists
+		}
+		// Check for unique constraint violation in error message (for SQLite and other DBs)
+		errStr := err.Error()
+		if strings.Contains(errStr, "UNIQUE constraint") || 
+		   strings.Contains(errStr, "duplicate key") ||
+		   strings.Contains(errStr, "Duplicate entry") {
 			return ErrUserAlreadyExists
 		}
 		return err
