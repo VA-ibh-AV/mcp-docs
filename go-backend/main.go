@@ -35,10 +35,19 @@ func main() {
 	app.Router.Use(middleware.RequestID())
 
 	app.Router.GET("/", handlers.HealthCheck)
-	app.Router.POST("/auth/register", authHandler.Register)
-	app.Router.POST("/auth/login", authHandler.Login)
-	app.Router.POST("/auth/refresh", authHandler.Refresh)
-	app.Router.POST("/auth/logout", authHandler.Logout)
+	auth := app.Router.Group("/auth")
+	{
+		auth.POST("/login", authHandler.Login)
+		auth.POST("/refresh", authHandler.Refresh)
+		auth.POST("/logout", authHandler.Logout)
+	}
+
+	api := app.Router.Group("/api")
+	api.Use(middleware.AuthRequired())
+	{
+		api.GET("/project", container.ProjectHandler.CreateProject)
+	}
+
 	app.Start()
 
 }

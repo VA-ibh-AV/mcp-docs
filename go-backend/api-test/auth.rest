@@ -30,3 +30,7 @@ Cookie: refresh_token="{{refreshToken}}"
 ###
 POST {{baseUrl}}/auth/logout HTTP/1.1
 Cookie: refresh_token="{{refreshToken}}"
+
+###
+GET {{baseUrl}}/api/project HTTP/1.1
+Authorization: Bearer {{login.response.body.access_token}}

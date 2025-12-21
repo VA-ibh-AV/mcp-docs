@@ -5,6 +5,7 @@ import (
 	"errors"
 	"mcpdocs/repository"
 	"mcpdocs/utils"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -20,7 +21,7 @@ func NewTokenService(refreshTokenRepo *repository.RefreshTokenRepository) *Token
 }
 
 func (s *TokenService) CreateTokens(ctx context.Context, userID string) (accessToken string, refreshToken string, err error) {
-	accessToken, err = utils.GenerateJWT(userID, 15*60) // 15 minutes
+	accessToken, err = utils.GenerateJWT(userID, 15*time.Minute) // 15 minutes
 	if err != nil {
 		return "", "", err
 	}

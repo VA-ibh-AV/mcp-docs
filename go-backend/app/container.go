@@ -9,7 +9,8 @@ import (
 )
 
 type Contaner struct {
-	AuthHandler *handlers.AuthHandler
+	AuthHandler    *handlers.AuthHandler
+	ProjectHandler *handlers.ProjectHandler
 }
 
 func NewContainer(db *gorm.DB) *Contaner {
@@ -23,8 +24,10 @@ func NewContainer(db *gorm.DB) *Contaner {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService, tokenService)
+	projectHandler := handlers.NewProjectHandler()
 
 	return &Contaner{
-		AuthHandler: authHandler,
+		AuthHandler:    authHandler,
+		ProjectHandler: projectHandler,
 	}
 }
