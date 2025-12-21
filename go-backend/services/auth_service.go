@@ -6,6 +6,8 @@ import (
 	"mcpdocs/repository"
 	"mcpdocs/schema"
 	"mcpdocs/utils"
+
+	"github.com/google/uuid"
 )
 
 type AuthService struct {
@@ -27,8 +29,17 @@ func (s *AuthService) RegisterUser(ctx context.Context, handlerReq *schema.Regis
 	}
 
 	return s.userRepository.CreateUser(ctx, &models.User{
+		ID:           uuid.NewString(),
 		Email:        handlerReq.Email,
 		UserName:     handlerReq.Name,
 		PasswordHash: hash,
 	})
+}
+
+func (s *AuthService) LoginUser(ctx context.Context, userID string, password string) (isValid bool, err error) {
+	_, err = s.userRepository.ValidateCredentials(ctx, userID, password)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

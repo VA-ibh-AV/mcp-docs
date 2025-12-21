@@ -3,17 +3,17 @@ package main
 import (
 	"log/slog"
 	"mcpdocs/app"
+	main_app "mcpdocs/app"
 	"mcpdocs/config"
 	"mcpdocs/db"
 	"mcpdocs/handlers"
 	"mcpdocs/logger"
 	"mcpdocs/middleware"
 	"mcpdocs/models"
-	"mcpdocs/repository"
-	"mcpdocs/services"
 )
 
 func main() {
+
 	app := app.NewApp()
 	config := config.LoadConfig()
 	db, err := db.NewPostgres(config)
@@ -22,11 +22,10 @@ func main() {
 		panic(err)
 	}
 
-	db.AutoMigrate(&models.User{})
+	db.AutoMigrate(&models.User{}, &models.RefreshToken{})
 
-	userRepo := repository.NewUserRepository(db)
-	authService := services.NewAuthService(userRepo)
-	authHandler := handlers.NewAuthHandler(authService)
+	container := main_app.NewContainer(db)
+	authHandler := container.AuthHandler
 
 	log := logger.New()
 	slog.SetDefault(log)
@@ -37,6 +36,9 @@ func main() {
 
 	app.Router.GET("/", handlers.HealthCheck)
 	app.Router.POST("/auth/register", authHandler.Register)
+	app.Router.POST("/auth/login", authHandler.Login)
+	app.Router.POST("/auth/refresh", authHandler.Refresh)
+	app.Router.POST("/auth/logout", authHandler.Logout)
 	app.Start()
 
 }

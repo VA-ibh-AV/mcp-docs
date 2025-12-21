@@ -53,3 +53,11 @@ func LoadConfig() *Config {
 
 	return &Config{Port: port, PostgresHost: postgresHost, PostgresPort: postgresPort, PostgresUser: postgresUser, PostgresPassword: postgresPassword, PostgresDb: postgresDb}
 }
+
+func GetJWTSecretKey() string {
+	secretKey := os.Getenv("JWT_SECRET_KEY")
+	if secretKey == "" {
+		slog.Error("JWT_SECRET_KEY is not set")
+	}
+	return secretKey
+}

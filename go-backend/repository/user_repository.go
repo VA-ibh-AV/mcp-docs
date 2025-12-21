@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"mcpdocs/models"
+	"mcpdocs/utils"
 
 	"gorm.io/gorm"
 )
@@ -39,4 +40,17 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	}
 
 	return &user, nil
+}
+
+func (r *UserRepository) ValidateCredentials(ctx context.Context, email, password string) (*models.User, error) {
+	user, err := r.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	if !utils.CheckPasswordHash(password, user.PasswordHash) {
+		return nil, ErrUserNotFound
+	}
+
+	return user, nil
 }

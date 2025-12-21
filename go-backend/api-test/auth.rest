@@ -7,10 +7,26 @@ POST {{baseUrl}}/auth/register HTTP/1.1
 Content-Type: application/json
 
 {
-  "username": "testuser",
-  "email": "vaibhav@gmail.com",
-  "name": "Vaibhav",
-  "password": "Test@1234"
+  "username": "{{userName}}",
+  "email": "{{userEmail}}",
+  "name": "{{userName}}",
+  "password": "{{userPassword}}"
 }
 
 ###
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+###
+POST {{baseUrl}}/auth/refresh HTTP/1.1
+Cookie: refresh_token="{{refreshToken}}"
+
+###
+POST {{baseUrl}}/auth/logout HTTP/1.1
+Cookie: refresh_token="{{refreshToken}}"
