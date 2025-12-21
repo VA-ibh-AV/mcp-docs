@@ -1,0 +1,16 @@
+
+GET {{baseUrl}} HTTP/1.1
+Accept: application/json
+
+###
+POST {{baseUrl}}/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "email": "vaibhav@gmail.com",
+  "name": "Vaibhav",
+  "password": "Test@1234"
+}
+
+###

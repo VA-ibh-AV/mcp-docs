@@ -1,35 +1,42 @@
 package main
 
 import (
-	"log"
-	"os"
-
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	"log/slog"
+	"mcpdocs/app"
+	"mcpdocs/config"
+	"mcpdocs/db"
+	"mcpdocs/handlers"
+	"mcpdocs/logger"
+	"mcpdocs/middleware"
+	"mcpdocs/models"
+	"mcpdocs/repository"
+	"mcpdocs/services"
 )
 
 func main() {
-
-	err := godotenv.Load()
+	app := app.NewApp()
+	config := config.LoadConfig()
+	db, err := db.NewPostgres(config)
 	if err != nil {
-		log.Println("Warning: .env file not found, using environment variables from system")
+		slog.Error(err.Error())
+		panic(err)
 	}
 
-	port := os.Getenv("PORT")
+	db.AutoMigrate(&models.User{})
 
-	router := gin.Default()
+	userRepo := repository.NewUserRepository(db)
+	authService := services.NewAuthService(userRepo)
+	authHandler := handlers.NewAuthHandler(authService)
 
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "Hello, World with Hot Reloading!!",
-		})
-	})
+	log := logger.New()
+	slog.SetDefault(log)
 
-	err = router.Run(":" + port)
-	if err != nil {
-		log.Fatal("Error starting server: ", err)
-	}
+	slog.Info("Starting application")
 
-	log.Println("Server started on port: ", port)
+	app.Router.Use(middleware.RequestID())
+
+	app.Router.GET("/", handlers.HealthCheck)
+	app.Router.POST("/auth/register", authHandler.Register)
+	app.Start()
 
 }
