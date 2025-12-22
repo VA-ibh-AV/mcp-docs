@@ -13,10 +13,10 @@ import (
 var ErrInvalidAccessToken = errors.New("invalid access token")
 
 type TokenService struct {
-	refreshTokenRepo *repository.RefreshTokenRepository
+	refreshTokenRepo repository.RefreshTokenRepositoryInterface
 }
 
-func NewTokenService(refreshTokenRepo *repository.RefreshTokenRepository) *TokenService {
+func NewTokenService(refreshTokenRepo repository.RefreshTokenRepositoryInterface) *TokenService {
 	return &TokenService{refreshTokenRepo: refreshTokenRepo}
 }
 
