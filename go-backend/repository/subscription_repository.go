@@ -21,7 +21,7 @@ func (r *SubscriptionRepository) CreateSubscription(subscription *models.Subcrip
 
 func (r *SubscriptionRepository) GetActiveSubscriptionByUserID(userID string, currentTime time.Time) (*models.Subcription, error) {
 	var subscription models.Subcription
-	err := r.db.Where("user_id = ? AND start_date <= ? AND end_date >= ?", userID, currentTime, currentTime).First(&subscription).Error
+	err := r.db.Where("user_id = ? AND period_start <= ? AND period_end >= ?", userID, currentTime, currentTime).First(&subscription).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil

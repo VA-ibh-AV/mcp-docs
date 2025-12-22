@@ -1,0 +1,36 @@
+
+### Login to get token
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+### List Plans
+GET {{baseUrl}}/api/plans HTTP/1.1
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Get Plan by ID
+GET {{baseUrl}}/api/plans/{{planID}} HTTP/1.1
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Create Plan
+POST {{baseUrl}}/api/plans HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.access_token}}
+
+{
+  "name": "Pro Plan",
+  "description": "Professional plan for power users",
+  "price": 29.99,
+  "interval": "monthly",
+  "metrics": {
+    "total_projects": 10,
+    "sse_executions": 1000,
+    "max_index_per_project": 5,
+    "ai_powered_search_executions": 500
+  }
+}

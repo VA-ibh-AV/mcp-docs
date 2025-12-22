@@ -22,7 +22,7 @@ func main() {
 		panic(err)
 	}
 
-	db.AutoMigrate(&models.User{}, &models.RefreshToken{})
+	db.AutoMigrate(&models.User{}, &models.RefreshToken{}, &models.Plan{}, &models.Subcription{}, &models.Usage{})
 
 	container := main_app.NewContainer(db)
 	authHandler := container.AuthHandler
@@ -47,6 +47,14 @@ func main() {
 	api.Use(middleware.AuthRequired())
 	{
 		api.GET("/project", container.ProjectHandler.CreateProject)
+		api.GET("/plans", container.PlanHandler.ListPlans)
+		api.GET("/plans/:id", container.PlanHandler.GetPlan)
+		api.POST("/plans", container.PlanHandler.CreatePlan)
+
+		api.POST("/subscription", container.SubscriptionHandler.CreateSubscription)
+		api.GET("/subscription", container.SubscriptionHandler.GetSubscription)
+		api.GET("/subscriptions", container.SubscriptionHandler.ListSubscriptions)
+		api.POST("/subscription/:subscriptionID/cancel", container.SubscriptionHandler.CancelSubscription)
 	}
 
 	app.Start()

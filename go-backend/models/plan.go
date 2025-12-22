@@ -3,10 +3,10 @@ package models
 import "time"
 
 type PlanMetrics struct {
-	Projects                  int `json:"total_projects"`
-	SSEExecutions             int `json:"sse_executions"`
-	MaxIndexPerProject        int `json:"max_index_per_project"`
-	AIPoweredSearchExecutions int `json:"ai_powered_search_executions"`
+	Projects                  int `json:"total_projects" gorm:"column:projects"`
+	SSEExecutions             int `json:"sse_executions" gorm:"column:sse_executions"`
+	MaxIndexPerProject        int `json:"max_index_per_project" gorm:"column:max_index_per_project"`
+	AIPoweredSearchExecutions int `json:"ai_powered_search_executions" gorm:"column:ai_powered_search_executions"`
 }
 
 type Plan struct {

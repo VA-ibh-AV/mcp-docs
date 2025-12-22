@@ -1,0 +1,33 @@
+
+### Login to get token
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+### Create Subscription
+POST {{baseUrl}}/api/subscription HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.access_token}}
+
+{
+  "user_id": "{{userEmail}}",
+  "plan_id": {{planID}}
+}
+
+### Get Active Subscription
+GET {{baseUrl}}/api/subscription HTTP/1.1
+Authorization: Bearer {{login.response.body.access_token}}
+
+### List Subscriptions
+GET {{baseUrl}}/api/subscriptions HTTP/1.1
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Cancel Subscription
+# @prompt subscriptionID
+POST {{baseUrl}}/api/subscription/{{subscriptionID}}/cancel HTTP/1.1
+Authorization: Bearer {{login.response.body.access_token}}
