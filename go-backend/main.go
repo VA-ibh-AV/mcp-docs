@@ -37,6 +37,7 @@ func main() {
 	app.Router.GET("/", handlers.HealthCheck)
 	auth := app.Router.Group("/auth")
 	{
+		auth.POST("/register", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/refresh", authHandler.Refresh)
 		auth.POST("/logout", authHandler.Logout)
