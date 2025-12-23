@@ -19,3 +19,12 @@ type RefreshTokenRepositoryInterface interface {
 	Revoke(ctx context.Context, token string) error
 	RevokeAllForUser(ctx context.Context, userID string) error
 }
+
+// ProjectRepositoryInterface defines the interface for project repository operations
+type ProjectRepositoryInterface interface {
+	CreateProject(ctx context.Context, project *models.Project) error
+	GetProjectsByUserID(ctx context.Context, userID string) ([]*models.Project, error)
+	GetProjectByID(ctx context.Context, projectID uint) (*models.Project, error)
+	UpdateProject(ctx context.Context, project *models.Project) error
+	DeleteProject(ctx context.Context, projectID uint) error
+}

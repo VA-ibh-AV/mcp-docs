@@ -1,0 +1,47 @@
+
+@authToken = {{login.response.body.access_token}}
+
+### Login to get token (Run this first)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+### Create Project
+# @name createProject
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "My New Project",
+  "description": "This is a test project",
+  "url": "https://example.com"
+}
+
+### Get Projects
+GET {{baseUrl}}/api/projects
+Authorization: Bearer {{authToken}}
+
+### Get Project by ID
+@projectId = {{createProject.response.body.id}}
+GET {{baseUrl}}/api/projects/{{projectId}}
+Authorization: Bearer {{authToken}}
+
+### Update Project
+PUT {{baseUrl}}/api/projects/{{projectId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "Updated Project Name",
+  "description": "Updated description"
+}
+
+### Delete Project
+DELETE {{baseUrl}}/api/projects/{{projectId}}
+Authorization: Bearer {{authToken}}

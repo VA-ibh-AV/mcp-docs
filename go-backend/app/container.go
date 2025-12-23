@@ -21,14 +21,16 @@ func NewContainer(db *gorm.DB) *Contaner {
 	tokenRepo := repository.NewRefreshTokenRepository(db)
 	planRepo := repository.NewPlanRepository(db)
 	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	projectRepo := repository.NewProjectRepository(db)
 
 	// Services
 	authService := services.NewAuthService(userRepo)
 	tokenService := services.NewTokenService(tokenRepo)
+	projectService := services.NewProjectService(projectRepo)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService, tokenService)
-	projectHandler := handlers.NewProjectHandler()
+	projectHandler := handlers.NewProjectHandler(projectService)
 	planHandler := handlers.NewPlanHandler(planRepo)
 	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionRepo, planRepo)
 

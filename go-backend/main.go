@@ -22,7 +22,7 @@ func main() {
 		panic(err)
 	}
 
-	db.AutoMigrate(&models.User{}, &models.RefreshToken{}, &models.Plan{}, &models.Subcription{}, &models.Usage{})
+	db.AutoMigrate(&models.User{}, &models.RefreshToken{}, &models.Plan{}, &models.Subcription{}, &models.Usage{}, &models.Project{})
 
 	container := main_app.NewContainer(db)
 	authHandler := container.AuthHandler
@@ -46,7 +46,12 @@ func main() {
 	api := app.Router.Group("/api")
 	api.Use(middleware.AuthRequired())
 	{
-		api.GET("/project", container.ProjectHandler.CreateProject)
+		api.POST("/projects", container.ProjectHandler.CreateProject)
+		api.GET("/projects", container.ProjectHandler.GetProjects)
+		api.GET("/projects/:id", container.ProjectHandler.GetProject)
+		api.PUT("/projects/:id", container.ProjectHandler.UpdateProject)
+		api.DELETE("/projects/:id", container.ProjectHandler.DeleteProject)
+
 		api.GET("/plans", container.PlanHandler.ListPlans)
 		api.GET("/plans/:id", container.PlanHandler.GetPlan)
 		api.POST("/plans", container.PlanHandler.CreatePlan)
