@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"log/slog"
+	"time"
+
 	"mcpdocs/app"
 	main_app "mcpdocs/app"
 	"mcpdocs/config"
+	"mcpdocs/consumers"
 	"mcpdocs/db"
 	"mcpdocs/handlers"
+	"mcpdocs/indexer"
 	"mcpdocs/kafka"
 	"mcpdocs/logger"
 	"mcpdocs/middleware"
@@ -25,18 +30,61 @@ func main() {
 
 	db.AutoMigrate(&models.User{}, &models.RefreshToken{}, &models.Plan{}, &models.Subcription{}, &models.Usage{}, &models.Project{}, &models.IndexingRequest{}, &models.IndexingJob{})
 
-	// Start Kafka Consumer for testing
+	container := main_app.NewContainer(db, config)
+
+	// Start Indexing Consumer (listens to indexing_requests, triggers crawler)
+	go func() {
+		// Configure the indexer
+		indexerConfig := &indexer.Config{
+			MaxPages:         100,
+			MaxDepth:         3,
+			MaxConcurrency:   5,
+			MaxCrawlDuration: 5 * time.Minute, // Max 5 minutes per crawl
+			RequestsPerSecond: 5.0,            // 5 req/sec (matches concurrency)
+			PageTimeout:       30 * time.Second,
+			Headless:          true,
+			CompressHTML:      true,
+			KafkaTopic:        "website-content",
+		}
+
+		// Set up callbacks for status updates
+		callbacks := consumers.IndexingConsumerCallbacks{
+			OnStatusUpdate: func(ctx context.Context, requestID uint, status string, errorMsg string) error {
+				return container.IndexingService.SetStatus(ctx, requestID, status, errorMsg)
+			},
+			OnTotalJobsUpdate: func(ctx context.Context, requestID uint, totalJobs int) error {
+				return container.IndexingService.UpdateTotalJobs(ctx, requestID, totalJobs)
+			},
+		}
+
+		consumer, err := consumers.NewIndexingConsumer(
+			config.KafkaBrokers,
+			container.Producer,
+			indexerConfig,
+			callbacks,
+		)
+		if err != nil {
+			slog.Error("Failed to create IndexingConsumer: " + err.Error())
+			return
+		}
+
+		slog.Info("Starting IndexingConsumer for indexing_requests topic")
+		if err := consumer.Start("indexing_requests"); err != nil {
+			slog.Error("IndexingConsumer failed: " + err.Error())
+		}
+	}()
+
+	// Dummy consumer for website-content (just logs messages for testing)
 	go func() {
 		consumer, err := kafka.NewConsumer(config.KafkaBrokers)
 		if err != nil {
-			slog.Error("Failed to create Kafka consumer: " + err.Error())
+			slog.Error("Failed to create website-content consumer: " + err.Error())
 			return
 		}
-		slog.Info("Starting Kafka consumer for indexing_requests")
-		consumer.Consume("indexing_requests")
+		slog.Info("Starting dummy consumer for website-content topic")
+		consumer.Consume("website-content")
 	}()
 
-	container := main_app.NewContainer(db, config)
 	authHandler := container.AuthHandler
 
 	log := logger.New()

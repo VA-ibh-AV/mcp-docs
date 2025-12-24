@@ -2,7 +2,16 @@ package models
 
 import "time"
 
-// IndexingJob represents a job for indexing documents in a project
+// Indexing status constants
+const (
+	IndexingStatusPending       = "pending"
+	IndexingStatusInProgress    = "in_progress"
+	IndexingStatusCrawlComplete = "crawl_complete" // Crawl done, Python agent processing
+	IndexingStatusCompleted     = "completed"      // All processing done
+	IndexingStatusFailed        = "failed"
+)
+
+// IndexingRequest represents a user's request to index a website
 type IndexingRequest struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	UserID        string    `gorm:"not null" json:"user_id"`

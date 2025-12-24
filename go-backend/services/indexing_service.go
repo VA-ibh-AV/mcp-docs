@@ -17,6 +17,7 @@ type IndexingServiceInterface interface {
 	GetIndexingRequestsByProject(ctx context.Context, projectID uint) ([]*models.IndexingRequest, error)
 	UpdateIndexingRequestStatus(ctx context.Context, requestID uint, req schema.UpdateIndexingRequestStatusRequest) (*models.IndexingRequest, error)
 	UpdateTotalJobs(ctx context.Context, requestID uint, totalJobs int) error
+	SetStatus(ctx context.Context, requestID uint, status string, errorMsg string) error
 
 	CreateIndexingJob(ctx context.Context, req schema.CreateIndexingJobRequest) (*models.IndexingJob, error)
 	GetIndexingJob(ctx context.Context, jobID uint) (*models.IndexingJob, error)
@@ -95,6 +96,20 @@ func (s *IndexingService) UpdateIndexingRequestStatus(ctx context.Context, reque
 
 func (s *IndexingService) UpdateTotalJobs(ctx context.Context, requestID uint, totalJobs int) error {
 	return s.requestRepo.UpdateTotalJobs(ctx, requestID, totalJobs)
+}
+
+// SetStatus is a simple method to update status (used by consumer)
+func (s *IndexingService) SetStatus(ctx context.Context, requestID uint, status string, errorMsg string) error {
+	request, err := s.requestRepo.GetIndexingRequestByID(ctx, requestID)
+	if err != nil {
+		return err
+	}
+	request.Status = status
+	if errorMsg != "" {
+		request.ErrorMsg = errorMsg
+	}
+	request.UpdatedAt = time.Now()
+	return s.requestRepo.UpdateIndexingRequest(ctx, request)
 }
 
 func (s *IndexingService) CreateIndexingJob(ctx context.Context, req schema.CreateIndexingJobRequest) (*models.IndexingJob, error) {

@@ -17,7 +17,7 @@ Authorization: Bearer {{authToken}}
 
 {
     "project_id": 1,
-    "endpoint": "https://example.com/docs"
+    "endpoint": "https://docs.copilotkit.ai/"
 }
 
 ### Get Indexing Request

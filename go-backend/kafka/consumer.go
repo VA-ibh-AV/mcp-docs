@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"encoding/json"
 	"log"
 	"sync"
 
@@ -43,8 +44,21 @@ func (c *Consumer) Consume(topic string) {
 		go func(pc sarama.PartitionConsumer) {
 			defer wg.Done()
 			for message := range pc.Messages() {
-				log.Printf("Message received: key=%s value=%s topic=%s partition=%d offset=%d",
-					string(message.Key), string(message.Value), message.Topic, message.Partition, message.Offset)
+				// Parse message to extract key fields without the large base64 content
+				var msg struct {
+					JobID     uint   `json:"job_id"`
+					RequestID uint   `json:"request_id"`
+					ProjectID uint   `json:"project_id"`
+					URL       string `json:"url"`
+				}
+				if err := json.Unmarshal(message.Value, &msg); err == nil {
+					log.Printf("Message received: job_id=%d request_id=%d project_id=%d url=%s topic=%s partition=%d offset=%d",
+						msg.JobID, msg.RequestID, msg.ProjectID, msg.URL, message.Topic, message.Partition, message.Offset)
+				} else {
+					// Fallback: just log metadata without value
+					log.Printf("Message received: key=%s topic=%s partition=%d offset=%d (payload parsing failed)",
+						string(message.Key), message.Topic, message.Partition, message.Offset)
+				}
 			}
 		}(pc)
 	}

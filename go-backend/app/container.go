@@ -17,6 +17,8 @@ type Contaner struct {
 	PlanHandler         *handlers.PlanHandler
 	SubscriptionHandler *handlers.SubscriptionHandler
 	IndexingHandler     *handlers.IndexingHandler
+	IndexingService     services.IndexingServiceInterface
+	Producer            *kafka.Producer
 }
 
 func NewContainer(db *gorm.DB, cfg *config.Config) *Contaner {
@@ -55,5 +57,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config) *Contaner {
 		PlanHandler:         planHandler,
 		SubscriptionHandler: subscriptionHandler,
 		IndexingHandler:     indexingHandler,
+		IndexingService:     indexingService,
+		Producer:            producer,
 	}
 }
