@@ -22,7 +22,7 @@ func main() {
 		panic(err)
 	}
 
-	db.AutoMigrate(&models.User{}, &models.RefreshToken{}, &models.Plan{}, &models.Subcription{}, &models.Usage{}, &models.Project{})
+	db.AutoMigrate(&models.User{}, &models.RefreshToken{}, &models.Plan{}, &models.Subcription{}, &models.Usage{}, &models.Project{}, &models.IndexingRequest{}, &models.IndexingJob{})
 
 	container := main_app.NewContainer(db)
 	authHandler := container.AuthHandler
@@ -60,6 +60,16 @@ func main() {
 		api.GET("/subscription", container.SubscriptionHandler.GetSubscription)
 		api.GET("/subscriptions", container.SubscriptionHandler.ListSubscriptions)
 		api.POST("/subscription/:subscriptionID/cancel", container.SubscriptionHandler.CancelSubscription)
+
+		api.POST("/indexing/requests", container.IndexingHandler.CreateIndexingRequest)
+		api.GET("/indexing/requests/:id", container.IndexingHandler.GetIndexingRequest)
+		api.PUT("/indexing/requests/:id/status", container.IndexingHandler.UpdateIndexingRequestStatus)
+		api.GET("/projects/:id/indexing-requests", container.IndexingHandler.GetIndexingRequestsByProject)
+
+		api.POST("/indexing/jobs", container.IndexingHandler.CreateIndexingJob)
+		api.GET("/indexing/jobs/:id", container.IndexingHandler.GetIndexingJob)
+		api.PUT("/indexing/jobs/:id/status", container.IndexingHandler.UpdateIndexingJobStatus)
+		api.GET("/indexing/requests/:id/jobs", container.IndexingHandler.GetIndexingJobsByRequest)
 	}
 
 	app.Start()

@@ -1,0 +1,68 @@
+@authToken = {{login.response.body.access_token}}
+
+### Login to get token (Run this first)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+### Create Indexing Request
+POST {{baseUrl}}/api/indexing/requests
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+    "project_id": 1,
+    "endpoint": "https://example.com/docs"
+}
+
+### Get Indexing Request
+GET {{baseUrl}}/api/indexing/requests/1
+Authorization: Bearer {{authToken}}
+
+### Get Indexing Requests by Project
+GET {{baseUrl}}/api/projects/1/indexing-requests
+Authorization: Bearer {{authToken}}
+
+### Create Indexing Job
+POST {{baseUrl}}/api/indexing/jobs
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+    "project_id": 1,
+    "request_id": 1,
+    "url": "https://example.com/docs/page1"
+}
+
+### Get Indexing Job
+GET {{baseUrl}}/api/indexing/jobs/1
+Authorization: Bearer {{authToken}}
+
+### Get Indexing Jobs by Request
+GET {{baseUrl}}/api/indexing/requests/1/jobs
+Authorization: Bearer {{authToken}}
+
+### Update Indexing Request Status
+PUT {{baseUrl}}/api/indexing/requests/1/status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+    "status": "in_progress",
+    "increment_completed_jobs": true
+}
+
+### Update Indexing Job Status
+PUT {{baseUrl}}/api/indexing/jobs/1/status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+    "status": "failed",
+    "error_msg": "Failed to fetch URL"
+}

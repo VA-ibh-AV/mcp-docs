@@ -28,3 +28,20 @@ type ProjectRepositoryInterface interface {
 	UpdateProject(ctx context.Context, project *models.Project) error
 	DeleteProject(ctx context.Context, projectID uint) error
 }
+
+// IndexingRequestRepositoryInterface defines the interface for indexing request repository operations
+type IndexingRequestRepositoryInterface interface {
+	CreateIndexingRequest(ctx context.Context, request *models.IndexingRequest) error
+	GetIndexingRequestByID(ctx context.Context, requestID uint) (*models.IndexingRequest, error)
+	GetIndexingRequestsByProjectID(ctx context.Context, projectID uint) ([]*models.IndexingRequest, error)
+	UpdateIndexingRequest(ctx context.Context, request *models.IndexingRequest) error
+	UpdateTotalJobs(ctx context.Context, requestID uint, totalJobs int) error
+}
+
+// IndexingJobRepositoryInterface defines the interface for indexing job repository operations
+type IndexingJobRepositoryInterface interface {
+	CreateIndexingJob(ctx context.Context, job *models.IndexingJob) error
+	GetIndexingJobByID(ctx context.Context, jobID uint) (*models.IndexingJob, error)
+	GetIndexingJobsByRequestID(ctx context.Context, requestID uint) ([]*models.IndexingJob, error)
+	UpdateIndexingJob(ctx context.Context, job *models.IndexingJob) error
+}
