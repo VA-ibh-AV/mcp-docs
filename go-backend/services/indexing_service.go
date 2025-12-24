@@ -2,9 +2,12 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"mcpdocs/kafka"
 	"mcpdocs/models"
 	"mcpdocs/repository"
 	"mcpdocs/schema"
+	"net/url"
 	"time"
 )
 
@@ -24,12 +27,14 @@ type IndexingServiceInterface interface {
 type IndexingService struct {
 	requestRepo repository.IndexingRequestRepositoryInterface
 	jobRepo     repository.IndexingJobRepositoryInterface
+	producer    *kafka.Producer
 }
 
-func NewIndexingService(requestRepo repository.IndexingRequestRepositoryInterface, jobRepo repository.IndexingJobRepositoryInterface) *IndexingService {
+func NewIndexingService(requestRepo repository.IndexingRequestRepositoryInterface, jobRepo repository.IndexingJobRepositoryInterface, producer *kafka.Producer) *IndexingService {
 	return &IndexingService{
 		requestRepo: requestRepo,
 		jobRepo:     jobRepo,
+		producer:    producer,
 	}
 }
 
@@ -45,6 +50,17 @@ func (s *IndexingService) CreateIndexingRequest(ctx context.Context, userID stri
 	if err := s.requestRepo.CreateIndexingRequest(ctx, request); err != nil {
 		return nil, err
 	}
+
+	// Push to Kafka
+	if s.producer != nil {
+		u, err := url.Parse(req.Endpoint)
+		if err == nil {
+			domain := u.Hostname()
+			payload, _ := json.Marshal(request)
+			s.producer.SendMessage("indexing_requests", domain, string(payload))
+		}
+	}
+
 	return request, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"mcpdocs/config"
 	"mcpdocs/db"
 	"mcpdocs/handlers"
+	"mcpdocs/kafka"
 	"mcpdocs/logger"
 	"mcpdocs/middleware"
 	"mcpdocs/models"
@@ -24,7 +25,18 @@ func main() {
 
 	db.AutoMigrate(&models.User{}, &models.RefreshToken{}, &models.Plan{}, &models.Subcription{}, &models.Usage{}, &models.Project{}, &models.IndexingRequest{}, &models.IndexingJob{})
 
-	container := main_app.NewContainer(db)
+	// Start Kafka Consumer for testing
+	go func() {
+		consumer, err := kafka.NewConsumer(config.KafkaBrokers)
+		if err != nil {
+			slog.Error("Failed to create Kafka consumer: " + err.Error())
+			return
+		}
+		slog.Info("Starting Kafka consumer for indexing_requests")
+		consumer.Consume("indexing_requests")
+	}()
+
+	container := main_app.NewContainer(db, config)
 	authHandler := container.AuthHandler
 
 	log := logger.New()

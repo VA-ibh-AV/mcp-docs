@@ -1,7 +1,10 @@
 package app
 
 import (
+	"log"
+	"mcpdocs/config"
 	"mcpdocs/handlers"
+	"mcpdocs/kafka"
 	"mcpdocs/repository"
 	"mcpdocs/services"
 
@@ -16,7 +19,14 @@ type Contaner struct {
 	IndexingHandler     *handlers.IndexingHandler
 }
 
-func NewContainer(db *gorm.DB) *Contaner {
+func NewContainer(db *gorm.DB, cfg *config.Config) *Contaner {
+	// Kafka
+	producer, err := kafka.NewProducer(cfg.KafkaBrokers)
+	if err != nil {
+		log.Printf("Failed to create Kafka producer: %v", err)
+		// Continue without Kafka for now, or handle error appropriately
+	}
+
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
 	tokenRepo := repository.NewRefreshTokenRepository(db)
@@ -30,7 +40,7 @@ func NewContainer(db *gorm.DB) *Contaner {
 	authService := services.NewAuthService(userRepo)
 	tokenService := services.NewTokenService(tokenRepo)
 	projectService := services.NewProjectService(projectRepo)
-	indexingService := services.NewIndexingService(indexingRequestRepo, indexingJobRepo)
+	indexingService := services.NewIndexingService(indexingRequestRepo, indexingJobRepo, producer)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService, tokenService)

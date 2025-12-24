@@ -14,6 +14,7 @@ type Config struct {
 	PostgresUser     string
 	PostgresPassword string
 	PostgresDb       string
+	KafkaBrokers     []string
 }
 
 func LoadConfig() *Config {
@@ -51,7 +52,21 @@ func LoadConfig() *Config {
 		slog.Error("POSTGRES_DB is not set")
 	}
 
-	return &Config{Port: port, PostgresHost: postgresHost, PostgresPort: postgresPort, PostgresUser: postgresUser, PostgresPassword: postgresPassword, PostgresDb: postgresDb}
+	kafkaBrokersStr := os.Getenv("KAFKA_BROKERS")
+	kafkaBrokers := []string{"kafka:29092"} // Default value
+	if kafkaBrokersStr != "" {
+		kafkaBrokers = []string{kafkaBrokersStr}
+	}
+
+	return &Config{
+		Port:             port,
+		PostgresHost:     postgresHost,
+		PostgresPort:     postgresPort,
+		PostgresUser:     postgresUser,
+		PostgresPassword: postgresPassword,
+		PostgresDb:       postgresDb,
+		KafkaBrokers:     kafkaBrokers,
+	}
 }
 
 func GetJWTSecretKey() string {
