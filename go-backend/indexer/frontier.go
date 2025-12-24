@@ -72,6 +72,14 @@ func (f *URLFrontier) Push(item URLItem) bool {
 		return false
 	}
 
+	// Calculate priority: combine source priority with depth
+	// This ensures sidebar links at any depth come before content links
+	priority := item.Priority + item.Depth
+	if item.Priority == 0 && item.Depth == 0 {
+		// Base URL gets highest priority
+		priority = 0
+	}
+
 	// Add to queue
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -85,7 +93,7 @@ func (f *URLFrontier) Push(item URLItem) bool {
 		url:      normalizedURL,
 		depth:    item.Depth,
 		parent:   item.ParentURL,
-		priority: item.Depth, // Lower depth = higher priority (BFS)
+		priority: priority, // Use calculated priority (source + depth)
 	})
 	f.inQueue.Store(normalizedURL, true)
 	f.urlsAdded.Add(1)

@@ -19,14 +19,33 @@ type URLItem struct {
 	URL       string `json:"url"`
 	Depth     int    `json:"depth"`
 	ParentURL string `json:"parent_url"`
+	Priority  int    `json:"priority"` // Lower = higher priority. 0=sidebar, 5=content, 10=footer
+	Source    string `json:"source"`   // "sidebar", "content", "footer"
+}
+
+// Link source constants for priority
+const (
+	LinkSourceSidebar = "sidebar"
+	LinkSourceContent = "content"
+	LinkSourceFooter  = "footer"
+	
+	LinkPrioritySidebar = 0  // Highest priority
+	LinkPriorityContent = 5  // Medium priority
+	LinkPriorityFooter  = 10 // Lowest priority
+)
+
+// ExtractedLink represents a link with its source location
+type ExtractedLink struct {
+	URL    string `json:"url"`
+	Source string `json:"source"` // "sidebar", "content", "footer"
 }
 
 // CrawlResult represents the outcome of crawling a URL
 type CrawlResult struct {
-	URL             string    `json:"url"`
-	Depth           int       `json:"depth"`
-	ParentURL       string    `json:"parent_url"`
-	DiscoveredLinks []string  `json:"discovered_links"`
+	URL             string          `json:"url"`
+	Depth           int             `json:"depth"`
+	ParentURL       string          `json:"parent_url"`
+	DiscoveredLinks []ExtractedLink `json:"discovered_links"`
 
 	// Content extracted from the page
 	HTML  string `json:"html"`

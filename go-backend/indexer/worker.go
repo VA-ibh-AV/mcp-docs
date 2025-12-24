@@ -140,22 +140,36 @@ func (w *CrawlWorker) processURL(ctx context.Context, item *URLItem) CrawlResult
 	result.ResponseTimeMs = fetchResult.ResponseTimeMs
 	result.ContentType = "text/html"
 
-	// Filter and add discovered links
+	// Filter and add discovered links with source classification
+	sidebarCount, contentCount, footerCount := 0, 0, 0
 	for _, link := range fetchResult.Links {
 		// Resolve relative URLs
-		resolvedLink := w.filter.ResolveURL(item.URL, link)
+		resolvedLink := w.filter.ResolveURL(item.URL, link.URL)
 		// Normalize
 		normalizedLink := w.filter.NormalizeURL(resolvedLink)
 		
 		// Only add links that pass the filter
 		if w.filter.IsRelevant(normalizedLink) {
-			result.DiscoveredLinks = append(result.DiscoveredLinks, normalizedLink)
+			result.DiscoveredLinks = append(result.DiscoveredLinks, ExtractedLink{
+				URL:    normalizedLink,
+				Source: link.Source,
+			})
+			
+			// Track counts for logging
+			switch link.Source {
+			case LinkSourceSidebar:
+				sidebarCount++
+			case LinkSourceFooter:
+				footerCount++
+			default:
+				contentCount++
+			}
 		}
 	}
 
 	w.pagesProcessed.Add(1)
-	log.Printf("[Worker %d] Crawled %s: %d chars, %d links found", 
-		w.id, item.URL, len(fetchResult.HTML), len(result.DiscoveredLinks))
+	log.Printf("[Worker %d] Crawled %s: %d chars, %d links (sidebar: %d, content: %d, footer: %d)", 
+		w.id, item.URL, len(fetchResult.HTML), len(result.DiscoveredLinks), sidebarCount, contentCount, footerCount)
 
 	return result
 }

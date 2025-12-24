@@ -152,12 +152,22 @@ func (c *Coordinator) handleResult(result CrawlResult) {
 		return
 	}
 
-	// Add discovered links to frontier
+	// Add discovered links to frontier with priority based on source
 	for _, link := range result.DiscoveredLinks {
+		priority := LinkPriorityContent // Default
+		switch link.Source {
+		case LinkSourceSidebar:
+			priority = LinkPrioritySidebar
+		case LinkSourceFooter:
+			priority = LinkPriorityFooter
+		}
+		
 		c.frontier.Push(URLItem{
-			URL:       link,
+			URL:       link.URL,
 			Depth:     result.Depth + 1,
 			ParentURL: result.URL,
+			Priority:  priority,
+			Source:    link.Source,
 		})
 	}
 

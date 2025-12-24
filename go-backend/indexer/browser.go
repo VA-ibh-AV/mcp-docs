@@ -175,11 +175,11 @@ func (bm *BrowserManager) FetchPage(page playwright.Page, url string) (*PageFetc
 	// Extract title
 	title, _ := page.Title()
 
-	// Extract links
+	// Extract links with source classification
 	links, err := bm.extractLinks(page)
 	if err != nil {
 		log.Printf("Warning: failed to extract links from %s: %v", url, err)
-		links = []string{}
+		links = []ExtractedLink{}
 	}
 
 	return &PageFetchResult{
@@ -193,27 +193,123 @@ func (bm *BrowserManager) FetchPage(page playwright.Page, url string) (*PageFetc
 	}, nil
 }
 
-// extractLinks extracts all href links from the page
-func (bm *BrowserManager) extractLinks(page playwright.Page) ([]string, error) {
-	// JavaScript to extract all links
+// extractLinks extracts all href links from the page with source classification
+func (bm *BrowserManager) extractLinks(page playwright.Page) ([]ExtractedLink, error) {
+	// JavaScript to extract all links with smart sidebar/footer detection
 	result, err := page.Evaluate(`() => {
-		const anchors = Array.from(document.querySelectorAll('a[href]'));
-		return anchors.map(a => a.href).filter(href => href && href.startsWith('http'));
+		const viewportWidth = window.innerWidth;
+		const viewportHeight = window.innerHeight;
+		const docHeight = Math.max(
+			document.body.scrollHeight,
+			document.documentElement.scrollHeight
+		);
+		
+		// Pre-compute sidebar containers using heuristics
+		const sidebarContainers = new Set();
+		const footerContainers = new Set();
+		
+		// Analyze all potential containers
+		const containers = document.querySelectorAll('nav, aside, div, section, ul, header, footer');
+		
+		for (const el of containers) {
+			const rect = el.getBoundingClientRect();
+			if (rect.width === 0 || rect.height === 0) continue;
+			
+			const style = window.getComputedStyle(el);
+			const linkCount = el.querySelectorAll('a[href]').length;
+			
+			// Sidebar detection heuristics
+			const isNarrow = rect.width > 0 && rect.width < 400;
+			const isOnLeftEdge = rect.left < 100;
+			const isOnRightEdge = rect.right > viewportWidth - 100;
+			const isSticky = style.position === 'fixed' || style.position === 'sticky';
+			const hasLinks = linkCount >= 5;
+			const isTall = rect.height > viewportHeight * 0.5;
+			const tagName = el.tagName.toLowerCase();
+			
+			// Score-based sidebar detection
+			let sidebarScore = 0;
+			if (isNarrow) sidebarScore += 3;
+			if (isOnLeftEdge || isOnRightEdge) sidebarScore += 3;
+			if (isSticky) sidebarScore += 2;
+			if (hasLinks) sidebarScore += 2;
+			if (isTall) sidebarScore += 1;
+			if (tagName === 'nav' || tagName === 'aside') sidebarScore += 2;
+			
+			// Check for common sidebar class/id patterns
+			const classAndId = (el.className + ' ' + el.id).toLowerCase();
+			if (/sidebar|sidenav|side-nav|toc|menu|nav-menu|navigation|docs-nav/.test(classAndId)) {
+				sidebarScore += 3;
+			}
+			
+			if (sidebarScore >= 5) {
+				sidebarContainers.add(el);
+			}
+			
+			// Footer detection
+			const isAtBottom = rect.top > docHeight - 300;
+			const isFooterTag = tagName === 'footer';
+			const hasFooterClass = /footer/.test(classAndId);
+			
+			if (isFooterTag || hasFooterClass || isAtBottom) {
+				footerContainers.add(el);
+			}
+		}
+		
+		// Helper to check if element is inside a container set
+		function isInsideContainerSet(element, containerSet) {
+			let parent = element;
+			while (parent) {
+				if (containerSet.has(parent)) return true;
+				parent = parent.parentElement;
+			}
+			return false;
+		}
+		
+		// Extract and classify all links
+		const links = document.querySelectorAll('a[href]');
+		const results = [];
+		const seen = new Set();
+		
+		for (const link of links) {
+			if (!link.href || !link.href.startsWith('http')) continue;
+			if (seen.has(link.href)) continue;
+			seen.add(link.href);
+			
+			let source = 'content';
+			
+			// Check if inside sidebar
+			if (isInsideContainerSet(link, sidebarContainers)) {
+				source = 'sidebar';
+			}
+			// Check if inside footer
+			else if (isInsideContainerSet(link, footerContainers)) {
+				source = 'footer';
+			}
+			
+			results.push({ url: link.href, source: source });
+		}
+		
+		return results;
 	}`)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert result to string slice
+	// Convert result to ExtractedLink slice
 	linksInterface, ok := result.([]interface{})
 	if !ok {
-		return []string{}, nil
+		return []ExtractedLink{}, nil
 	}
 
-	links := make([]string, 0, len(linksInterface))
-	for _, link := range linksInterface {
-		if linkStr, ok := link.(string); ok {
-			links = append(links, linkStr)
+	links := make([]ExtractedLink, 0, len(linksInterface))
+	for _, item := range linksInterface {
+		if linkMap, ok := item.(map[string]interface{}); ok {
+			url, _ := linkMap["url"].(string)
+			source, _ := linkMap["source"].(string)
+			if url != "" {
+				links = append(links, ExtractedLink{URL: url, Source: source})
+			}
 		}
 	}
 
@@ -253,7 +349,7 @@ type PageFetchResult struct {
 	HTML           string
 	Text           string
 	Title          string
-	Links          []string
+	Links          []ExtractedLink
 	StatusCode     int
 	ResponseTimeMs int64
 }
