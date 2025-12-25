@@ -5,6 +5,7 @@ import (
 	"mcpdocs/config"
 	"mcpdocs/handlers"
 	"mcpdocs/kafka"
+	"mcpdocs/observability"
 	"mcpdocs/repository"
 	"mcpdocs/services"
 
@@ -19,6 +20,7 @@ type Contaner struct {
 	IndexingHandler     *handlers.IndexingHandler
 	IndexingService     services.IndexingServiceInterface
 	Producer            *kafka.Producer
+	Metrics             *observability.Metrics
 }
 
 func NewContainer(db *gorm.DB, cfg *config.Config) *Contaner {

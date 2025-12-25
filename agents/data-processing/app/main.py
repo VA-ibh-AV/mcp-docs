@@ -19,6 +19,7 @@ from app.config import get_settings
 from consumer.kafka_consumer import IndexingJobConsumer
 from processor.pipeline import DocumentProcessor
 from rag.pool import LightRAGPool
+from observability import init_metrics, Metrics
 
 # Configure logging
 logging.basicConfig(
@@ -45,6 +46,7 @@ class RAGAgent:
         self._shutdown_event = asyncio.Event()
         
         # Initialize components
+        self.metrics: Optional[Metrics] = None
         self.rag_pool: Optional[LightRAGPool] = None
         self.processor: Optional[DocumentProcessor] = None
         self.consumer: Optional[IndexingJobConsumer] = None
@@ -56,6 +58,14 @@ class RAGAgent:
         # Configure logging level
         logging.getLogger().setLevel(self.settings.log_level)
         
+        # Initialize OpenTelemetry metrics
+        metrics_port = getattr(self.settings, 'metrics_port', 9091)
+        self.metrics = init_metrics(
+            service_name="mcp-docs-rag-agent",
+            service_version="1.0.0",
+            port=metrics_port
+        )
+        
         # Initialize LightRAG pool
         self.rag_pool = LightRAGPool(self.settings)
         
@@ -63,12 +73,14 @@ class RAGAgent:
         self.processor = DocumentProcessor(
             settings=self.settings,
             rag_pool=self.rag_pool,
+            metrics=self.metrics,
         )
         
         # Initialize Kafka consumer with processor as message handler
         self.consumer = IndexingJobConsumer(
             settings=self.settings,
             message_handler=self.processor.process,
+            metrics=self.metrics,
         )
         
         logger.info("RAG Agent initialized successfully")
@@ -78,6 +90,7 @@ class RAGAgent:
         logger.info(f"  Consumer Group: {self.settings.kafka_group_id}")
         logger.info(f"  Max Workers: {self.settings.max_workers}")
         logger.info(f"  Max RAG Instances: {self.settings.max_rag_instances}")
+        logger.info(f"  Metrics Port: {metrics_port}")
         
     async def run(self) -> None:
         """Run the agent until shutdown."""
