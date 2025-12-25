@@ -16,6 +16,7 @@ type UpdateIndexingRequestStatusRequest struct {
 type IndexingRequestResponse struct {
 	ID            uint      `json:"id"`
 	UserID        string    `json:"user_id"`
+	CollectionID  string    `json:"collection_id"`
 	Endpoint      string    `json:"endpoint"`
 	TotalJobs     int       `json:"total_jobs"`
 	CompletedJobs int       `json:"completed_jobs"`

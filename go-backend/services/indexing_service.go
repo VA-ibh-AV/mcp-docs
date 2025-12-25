@@ -9,6 +9,8 @@ import (
 	"mcpdocs/schema"
 	"net/url"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type IndexingServiceInterface interface {
@@ -40,13 +42,17 @@ func NewIndexingService(requestRepo repository.IndexingRequestRepositoryInterfac
 }
 
 func (s *IndexingService) CreateIndexingRequest(ctx context.Context, userID string, req schema.CreateIndexingRequestRequest) (*models.IndexingRequest, error) {
+	// Generate unique collection ID for LightRAG workspace isolation
+	collectionID := uuid.New().String()
+
 	request := &models.IndexingRequest{
-		UserID:    userID,
-		ProjectID: req.ProjectID,
-		Endpoint:  req.Endpoint,
-		Status:    "pending",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		UserID:       userID,
+		CollectionID: collectionID,
+		ProjectID:    req.ProjectID,
+		Endpoint:     req.Endpoint,
+		Status:       "pending",
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 	if err := s.requestRepo.CreateIndexingRequest(ctx, request); err != nil {
 		return nil, err

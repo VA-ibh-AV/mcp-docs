@@ -9,9 +9,9 @@ type Config struct {
 	UserAgent string `json:"user_agent"`
 
 	// Crawl limits
-	MaxPages        int           `json:"max_pages"`
-	MaxDepth        int           `json:"max_depth"`
-	MaxConcurrency  int           `json:"max_concurrency"`  // Number of concurrent workers
+	MaxPages         int           `json:"max_pages"`
+	MaxDepth         int           `json:"max_depth"`
+	MaxConcurrency   int           `json:"max_concurrency"`    // Number of concurrent workers
 	MaxCrawlDuration time.Duration `json:"max_crawl_duration"` // Maximum time for entire crawl
 
 	// Timeouts
@@ -29,10 +29,10 @@ type Config struct {
 	KafkaFlushTime time.Duration `json:"kafka_flush_time"`
 
 	// Content settings
-	CompressHTML    bool `json:"compress_html"`
-	MaxHTMLSize     int  `json:"max_html_size"`      // Max HTML size to store (bytes)
-	ExtractText     bool `json:"extract_text"`       // Extract text content
-	MaxTextLength   int  `json:"max_text_length"`    // Max text length to store
+	CompressHTML  bool `json:"compress_html"`
+	MaxHTMLSize   int  `json:"max_html_size"`   // Max HTML size to store (bytes)
+	ExtractText   bool `json:"extract_text"`    // Extract text content
+	MaxTextLength int  `json:"max_text_length"` // Max text length to store
 }
 
 // DefaultConfig returns a sensible default configuration
@@ -43,7 +43,7 @@ func DefaultConfig() *Config {
 		UserAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 MCPDocsBot/1.0",
 
 		// Crawl limits
-		MaxPages:         100,
+		MaxPages:         20,
 		MaxDepth:         5,
 		MaxConcurrency:   5,
 		MaxCrawlDuration: 10 * time.Minute, // Max 10 minutes per crawl

@@ -73,6 +73,7 @@ func CreatePageContent(result *CrawlResult, compress bool) (*PageContent, error)
 func CreateKafkaMessage(
 	jobID, requestID, projectID uint,
 	userID string,
+	collectionID string,
 	result *CrawlResult,
 	metadata map[string]string,
 	compress bool,
@@ -87,6 +88,7 @@ func CreateKafkaMessage(
 		RequestID:    requestID,
 		ProjectID:    projectID,
 		UserID:       userID,
+		CollectionID: collectionID,
 		URL:          result.URL,
 		Depth:        result.Depth,
 		ParentURL:    result.ParentURL,

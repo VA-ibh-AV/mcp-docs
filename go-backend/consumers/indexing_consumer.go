@@ -15,11 +15,12 @@ import (
 
 // IndexingRequestPayload represents the message from indexing_requests topic
 type IndexingRequestPayload struct {
-	ID        uint   `json:"id"`
-	UserID    string `json:"user_id"`
-	Endpoint  string `json:"endpoint"`
-	ProjectID uint   `json:"project_id"`
-	Status    string `json:"status"`
+	ID           uint   `json:"id"`
+	UserID       string `json:"user_id"`
+	CollectionID string `json:"collection_id"` // UUID for LightRAG workspace isolation
+	Endpoint     string `json:"endpoint"`
+	ProjectID    uint   `json:"project_id"`
+	Status       string `json:"status"`
 }
 
 // IndexingConsumerCallbacks contains callbacks for status updates
@@ -167,12 +168,13 @@ func (c *IndexingConsumer) handleMessage(msg *sarama.ConsumerMessage) {
 func (c *IndexingConsumer) runCrawl(ctx context.Context, payload *IndexingRequestPayload) (int, error) {
 	// Create crawl request
 	crawlRequest := &indexer.CrawlRequest{
-		RequestID: payload.ID,
-		ProjectID: payload.ProjectID,
-		UserID:    payload.UserID,
-		BaseURL:   payload.Endpoint,
-		MaxPages:  c.indexerConfig.MaxPages,
-		MaxDepth:  c.indexerConfig.MaxDepth,
+		RequestID:    payload.ID,
+		ProjectID:    payload.ProjectID,
+		UserID:       payload.UserID,
+		CollectionID: payload.CollectionID,
+		BaseURL:      payload.Endpoint,
+		MaxPages:     c.indexerConfig.MaxPages,
+		MaxDepth:     c.indexerConfig.MaxDepth,
 	}
 
 	// Create coordinator

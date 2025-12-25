@@ -17,7 +17,7 @@ Authorization: Bearer {{authToken}}
 
 {
     "project_id": 1,
-    "endpoint": "https://docs.copilotkit.ai/"
+    "endpoint": "https://docs.langchain.com/oss/python/langchain/overview"
 }
 
 ### Get Indexing Request

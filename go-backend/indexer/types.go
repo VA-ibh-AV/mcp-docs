@@ -6,12 +6,13 @@ import (
 
 // CrawlRequest represents a request to crawl a website
 type CrawlRequest struct {
-	RequestID uint   `json:"request_id"`
-	ProjectID uint   `json:"project_id"`
-	UserID    string `json:"user_id"`
-	BaseURL   string `json:"base_url"`
-	MaxPages  int    `json:"max_pages"`
-	MaxDepth  int    `json:"max_depth"`
+	RequestID    uint   `json:"request_id"`
+	ProjectID    uint   `json:"project_id"`
+	UserID       string `json:"user_id"`
+	CollectionID string `json:"collection_id"` // UUID for LightRAG workspace isolation
+	BaseURL      string `json:"base_url"`
+	MaxPages     int    `json:"max_pages"`
+	MaxDepth     int    `json:"max_depth"`
 }
 
 // URLItem represents a URL in the crawl queue
@@ -76,13 +77,14 @@ type CrawlProgress struct {
 
 // IndexingJobMessage is the Kafka message sent for each discovered URL
 type IndexingJobMessage struct {
-	JobID      uint   `json:"job_id"`
-	RequestID  uint   `json:"request_id"`
-	ProjectID  uint   `json:"project_id"`
-	UserID     string `json:"user_id"`
-	URL        string `json:"url"`
-	Depth      int    `json:"depth"`
-	ParentURL  string `json:"parent_url"`
+	JobID        uint   `json:"job_id"`
+	RequestID    uint   `json:"request_id"`
+	ProjectID    uint   `json:"project_id"`
+	UserID       string `json:"user_id"`
+	CollectionID string `json:"collection_id"` // UUID for LightRAG workspace isolation
+	URL          string `json:"url"`
+	Depth        int    `json:"depth"`
+	ParentURL    string `json:"parent_url"`
 
 	// Content (compressed)
 	Content *PageContent `json:"content,omitempty"`

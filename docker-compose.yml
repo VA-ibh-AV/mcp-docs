@@ -12,7 +12,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/16/main
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
@@ -92,6 +92,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-mcp-docs-internal-key-2025}
     networks:
       - mcp-docs-network
     volumes:
@@ -144,6 +145,42 @@ services:
       - mcp-docs-network
     restart: unless-stopped
 
+  # Python RAG Agent - Document Processor
+  rag-agent:
+    build:
+      context: ./agents/data-processing
+      dockerfile: Dockerfile.dev
+    container_name: mcp-docs-rag-agent
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      go-backend:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_GROUP_ID=rag-processor
+      - KAFKA_TOPIC=indexing_jobs
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - GO_BACKEND_URL=http://go-backend:8005
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-mcp-docs-internal-key-2025}
+      - MAX_WORKERS=5
+      - MAX_RAG_INSTANCES=10
+      - LOG_LEVEL=INFO
+    networks:
+      - mcp-docs-network
+    volumes:
+      - ./agents/data-processing:/app
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local
@@ -157,4 +194,3 @@ volumes:
 networks:
   mcp-docs-network:
     driver: bridge
-

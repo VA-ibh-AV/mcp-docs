@@ -15,6 +15,7 @@ const (
 type IndexingRequest struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	UserID        string    `gorm:"not null" json:"user_id"`
+	CollectionID  string    `gorm:"type:varchar(36);not null;uniqueIndex" json:"collection_id"` // UUID for LightRAG workspace isolation
 	Endpoint      string    `gorm:"type:varchar(255);not null" json:"endpoint"`
 	TotalJobs     int       `gorm:"not null" json:"total_jobs"`
 	CompletedJobs int       `gorm:"not null" json:"completed_jobs"`

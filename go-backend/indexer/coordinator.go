@@ -190,6 +190,7 @@ func (c *Coordinator) handleResult(result CrawlResult) {
 		c.request.RequestID,
 		c.request.ProjectID,
 		c.request.UserID,
+		c.request.CollectionID,
 		&result,
 		metadata,
 		c.config.CompressHTML,

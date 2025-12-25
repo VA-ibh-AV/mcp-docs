@@ -44,7 +44,7 @@ func main() {
 			PageTimeout:       30 * time.Second,
 			Headless:          true,
 			CompressHTML:      true,
-			KafkaTopic:        "website-content",
+			KafkaTopic:        "indexing_jobs",
 		}
 
 		// Set up callbacks for status updates
@@ -74,15 +74,15 @@ func main() {
 		}
 	}()
 
-	// Dummy consumer for website-content (just logs messages for testing)
+	// Dummy consumer for indexing_jobs (just logs messages for testing - can be removed when Python agent is running)
 	go func() {
 		consumer, err := kafka.NewConsumer(config.KafkaBrokers)
 		if err != nil {
-			slog.Error("Failed to create website-content consumer: " + err.Error())
+			slog.Error("Failed to create indexing_jobs consumer: " + err.Error())
 			return
 		}
-		slog.Info("Starting dummy consumer for website-content topic")
-		consumer.Consume("website-content")
+		slog.Info("Starting dummy consumer for indexing_jobs topic (for debugging)")
+		consumer.Consume("indexing_jobs")
 	}()
 
 	authHandler := container.AuthHandler
