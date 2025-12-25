@@ -13,16 +13,15 @@ token_tracker = TokenTracker()
 
 setup_logger("lightrag", level="INFO")
 
-WORKING_DIR = "./rag_storage"
-if not os.path.exists(WORKING_DIR):
-    os.mkdir(WORKING_DIR)
-
-
 async def initialize_rag():
     rag = LightRAG(
-        working_dir=WORKING_DIR,
         embedding_func=openai_embed,
         llm_model_func=gpt_4o_mini_complete,
+        kv_storage="PGKVStorage",
+        vector_storage="PGVectorStorage",
+        graph_storage="PGGraphStorage",
+        doc_status_storage="PGDocStatusStorage",
+        workspace="unique_workspace_name_2",
     )
     # IMPORTANT: Both initialization calls are required!
     await rag.initialize_storages()  # Initialize storage backends

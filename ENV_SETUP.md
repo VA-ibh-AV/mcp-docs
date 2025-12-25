@@ -42,9 +42,6 @@ The following environment variables are used in `docker-compose.yml`:
 - `KAFKA_BROKER_ID`: Kafka broker ID (default: `1`)
 - `KAFKA_ADVERTISED_LISTENERS`: Kafka listeners configuration
 
-### ChromaDB
-- `CHROMADB_PORT`: ChromaDB port (default: `8000`)
-
 ## Security Notes
 
 - ✅ `.env` is already in `.gitignore` - it will NOT be committed to Git

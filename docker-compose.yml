@@ -1,7 +1,7 @@
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: gzdaniel/postgres-for-rag:16.6
     container_name: mcp-docs-postgres
     env_file:
       - .env
@@ -20,6 +20,7 @@ services:
       retries: 5
     networks:
       - mcp-docs-network
+    command: sh -c "service postgresql start && sleep infinity"
 
   # Zookeeper (required for Kafka)
   zookeeper:
@@ -67,27 +68,6 @@ services:
       - mcp-docs-network
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ChromaDB (Vector Database)
-  chromadb:
-    image: chromadb/chroma:latest
-    container_name: mcp-docs-chromadb
-    env_file:
-      - .env
-    ports:
-      - "${CHROMADB_PORT:-8000}:8000"
-    environment:
-      - IS_PERSISTENT=TRUE
-      - ANONYMIZED_TELEMETRY=FALSE
-    volumes:
-      - chromadb_data:/chroma/chroma
-    networks:
-      - mcp-docs-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -172,8 +152,6 @@ volumes:
   zookeeper_data:
     driver: local
   zookeeper_log:
-    driver: local
-  chromadb_data:
     driver: local
 
 networks:
