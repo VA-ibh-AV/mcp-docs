@@ -92,7 +92,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-mcp-docs-internal-key-2025}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
     networks:
       - mcp-docs-network
     volumes:
@@ -171,7 +171,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - GO_BACKEND_URL=http://go-backend:8005
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-mcp-docs-internal-key-2025}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
       - MAX_WORKERS=5
       - MAX_RAG_INSTANCES=10
       - LOG_LEVEL=INFO
