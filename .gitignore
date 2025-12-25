@@ -81,3 +81,8 @@ mcp_cache/
 
 # --- Projects ----
 projects/
+
+# --- Observability data (Docker volumes) ---
+# These are managed by Docker but may be created locally
+prometheus/data/
+grafana/data/
