@@ -10,13 +10,25 @@ import (
 )
 
 // StartSystemMetricsCollection starts a background goroutine to collect system metrics
-func StartSystemMetricsCollection(metrics *Metrics, interval time.Duration) {
+// Returns a stop function to cleanup the goroutine
+func StartSystemMetricsCollection(metrics *Metrics, interval time.Duration) func() {
+	ctx, cancel := context.WithCancel(context.Background())
 	ticker := time.NewTicker(interval)
+	
 	go func() {
-		for range ticker.C {
-			collectSystemMetrics(metrics)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				collectSystemMetrics(metrics)
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
+	
+	// Return stop function
+	return cancel
 }
 
 func collectSystemMetrics(metrics *Metrics) {
@@ -34,11 +46,13 @@ func collectSystemMetrics(metrics *Metrics) {
 	metrics.MemoryHeap.Record(ctx, int64(m.HeapAlloc))
 }
 
-// RecordDBMetrics records database connection pool metrics
-func RecordDBMetrics(metrics *Metrics, active, idle int64) {
+// RecordDBMetrics records database connection pool metrics as absolute values
+// Note: These should be called with current connection counts, not deltas
+func RecordDBMetrics(metrics *Metrics, activeChange, idleChange int64) {
 	ctx := context.Background()
-	metrics.DBConnectionsActive.Add(ctx, active)
-	metrics.DBConnectionsIdle.Add(ctx, idle)
+	// Use Add for UpDownCounter with delta values
+	metrics.DBConnectionsActive.Add(ctx, activeChange)
+	metrics.DBConnectionsIdle.Add(ctx, idleChange)
 }
 
 // RecordKafkaPartitionMetrics records Kafka partition information

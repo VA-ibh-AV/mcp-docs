@@ -102,7 +102,8 @@ func main() {
 	}
 
 	// Start system metrics collection (every 15 seconds)
-	observability.StartSystemMetricsCollection(metrics, 15*time.Second)
+	stopMetrics := observability.StartSystemMetricsCollection(metrics, 15*time.Second)
+	defer stopMetrics() // Cleanup on shutdown
 
 	// Make metrics available to container for instrumentation
 	container.Metrics = metrics
