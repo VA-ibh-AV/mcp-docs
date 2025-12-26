@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"mcpdocs/app"
@@ -16,6 +17,7 @@ import (
 	"mcpdocs/logger"
 	"mcpdocs/middleware"
 	"mcpdocs/models"
+	"mcpdocs/observability"
 )
 
 func main() {
@@ -36,7 +38,7 @@ func main() {
 	go func() {
 		// Configure the indexer
 		indexerConfig := &indexer.Config{
-			MaxPages:         100,
+			MaxPages:         20,
 			MaxDepth:         3,
 			MaxConcurrency:   5,
 			MaxCrawlDuration: 5 * time.Minute, // Max 5 minutes per crawl
@@ -92,7 +94,35 @@ func main() {
 
 	slog.Info("Starting application")
 
+	// Initialize OpenTelemetry metrics
+	metrics, metricsHandler, err := observability.InitMetrics("mcp-docs-backend", "1.0.0")
+	if err != nil {
+		slog.Error("Failed to initialize metrics", "error", err)
+		panic(err)
+	}
+
+	// Start system metrics collection (every 15 seconds)
+	stopMetrics := observability.StartSystemMetricsCollection(metrics, 15*time.Second)
+	defer stopMetrics() // Cleanup on shutdown
+
+	// Make metrics available to container for instrumentation
+	container.Metrics = metrics
+
+	// Start metrics server on port 9090
+	go func() {
+		metricsServer := &http.Server{
+			Addr:    ":9090",
+			Handler: metricsHandler,
+		}
+		slog.Info("Starting metrics server on :9090")
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Metrics server failed", "error", err)
+		}
+	}()
+
+	// Add observability middleware
 	app.Router.Use(middleware.RequestID())
+	app.Router.Use(observability.MetricsMiddleware(metrics))
 
 	app.Router.GET("/", handlers.HealthCheck)
 	auth := app.Router.Group("/auth")

@@ -42,6 +42,12 @@ The following environment variables are used in `docker-compose.yml`:
 - `KAFKA_BROKER_ID`: Kafka broker ID (default: `1`)
 - `KAFKA_ADVERTISED_LISTENERS`: Kafka listeners configuration
 
+### Observability (Optional)
+- `METRICS_PORT`: Python RAG Agent Prometheus metrics port (default: `9091`)
+- Go backend exposes metrics on port `9090`
+- Prometheus UI is accessible on port `9090` (host)
+- Grafana UI is accessible on port `3001` (host) with credentials `admin/admin`
+
 ## Security Notes
 
 - ✅ `.env` is already in `.gitignore` - it will NOT be committed to Git

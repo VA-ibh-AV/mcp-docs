@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     
+    # Observability
+    metrics_port: int = 9091  # Port for Prometheus metrics endpoint
+    
     @property
     def postgres_dsn(self) -> str:
         """Generate PostgreSQL connection string."""

@@ -85,6 +85,7 @@ services:
       - .env
     ports:
       - "${GO_BACKEND_PORT:-8005}:8005"
+      - "9095:9090"  # Prometheus metrics endpoint
     environment:
       - PORT=8005
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
@@ -160,6 +161,8 @@ services:
         condition: service_started
     env_file:
       - .env
+    ports:
+      - "9091:9091"  # Prometheus metrics endpoint
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - KAFKA_GROUP_ID=rag-processor
@@ -175,10 +178,107 @@ services:
       - MAX_WORKERS=5
       - MAX_RAG_INSTANCES=10
       - LOG_LEVEL=INFO
+      - METRICS_PORT=9091
     networks:
       - mcp-docs-network
     volumes:
       - ./agents/data-processing:/app
+    restart: unless-stopped
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-docs-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - mcp-docs-network
+    restart: unless-stopped
+
+  # Grafana - Metrics Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-docs-grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - mcp-docs-network
+    restart: unless-stopped
+
+  # Loki - Log Aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: mcp-docs-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - mcp-docs-network
+    restart: unless-stopped
+
+  # Promtail - Log Collector
+  promtail:
+    image: grafana/promtail:latest
+    container_name: mcp-docs-promtail
+    depends_on:
+      - loki
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - mcp-docs-network
+    restart: unless-stopped
+
+  # Kafka Exporter - Metrics for Kafka
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: mcp-docs-kafka-exporter
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - '--kafka.server=kafka:29092'
+      - '--web.listen-address=:9308'
+    ports:
+      - "9308:9308"
+    networks:
+      - mcp-docs-network
+    restart: unless-stopped
+
+  # PostgreSQL Exporter - Metrics for PostgreSQL
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: mcp-docs-postgres-exporter
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - mcp-docs-network
     restart: unless-stopped
 
 volumes:
@@ -189,6 +289,12 @@ volumes:
   zookeeper_data:
     driver: local
   zookeeper_log:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
     driver: local
 
 networks:

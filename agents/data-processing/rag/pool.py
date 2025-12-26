@@ -99,6 +99,10 @@ class LightRAGPool:
         os.environ.setdefault("POSTGRES_PASSWORD", self.settings.postgres_password)
         os.environ.setdefault("POSTGRES_DB", self.settings.postgres_db)
         
+        # Prefix workspace with 'ws_' to ensure valid PostgreSQL/AGE graph names.
+        # AGE graph names cannot start with a number, and UUIDs may start with digits.
+        workspace_name = f"ws_{collection_id.replace('-', '_')}"
+        
         rag = LightRAG(
             embedding_func=openai_embed,
             llm_model_func=gpt_4o_mini_complete,
@@ -106,7 +110,7 @@ class LightRAGPool:
             vector_storage="PGVectorStorage",
             graph_storage="PGGraphStorage",
             doc_status_storage="PGDocStatusStorage",
-            workspace=collection_id,
+            workspace=workspace_name,
         )
         
         # Initialize storage backends

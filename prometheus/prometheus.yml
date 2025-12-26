@@ -1,0 +1,41 @@
+# Prometheus configuration file
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'mcp-docs'
+    environment: 'development'
+
+# Scrape configurations
+scrape_configs:
+  # Go Backend metrics
+  - job_name: 'go-backend'
+    static_configs:
+      - targets: ['go-backend:9090']
+        labels:
+          service: 'mcp-docs-backend'
+          component: 'api'
+
+  # Python RAG Agent metrics
+  - job_name: 'python-rag-agent'
+    static_configs:
+      - targets: ['rag-agent:9091']
+        labels:
+          service: 'mcp-docs-rag-agent'
+          component: 'worker'
+
+  # Kafka Exporter metrics
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+        labels:
+          service: 'kafka'
+          component: 'message-broker'
+
+  # PostgreSQL Exporter metrics
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgres'
+          component: 'database'
