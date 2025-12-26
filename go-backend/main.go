@@ -38,7 +38,7 @@ func main() {
 	go func() {
 		// Configure the indexer
 		indexerConfig := &indexer.Config{
-			MaxPages:         100,
+			MaxPages:         20,
 			MaxDepth:         3,
 			MaxConcurrency:   5,
 			MaxCrawlDuration: 5 * time.Minute, // Max 5 minutes per crawl

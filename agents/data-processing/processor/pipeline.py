@@ -6,11 +6,13 @@ Handles the complete flow from Kafka message to LightRAG storage.
 import asyncio
 import logging
 import time
+from typing import Optional
 
 from app.config import Settings
 from models.messages import IndexingJobMessage, ProcessingResult
 from processor.html_cleaner import decompress_html, clean_html_to_text
 from rag.pool import LightRAGPool
+from observability.metrics import Metrics
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +34,11 @@ class DocumentProcessor:
         self,
         settings: Settings,
         rag_pool: LightRAGPool,
+        metrics: Optional[Metrics] = None,
     ):
         self.settings = settings
         self.rag_pool = rag_pool
+        self.metrics = metrics
         self._semaphore = asyncio.Semaphore(settings.max_workers)
         
         # In-memory metrics

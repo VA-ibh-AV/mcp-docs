@@ -13,6 +13,7 @@ from aiokafka.errors import KafkaError
 
 from app.config import Settings
 from models.messages import IndexingJobMessage
+from observability.metrics import Metrics
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,11 @@ class IndexingJobConsumer:
         self,
         settings: Settings,
         message_handler: Callable[[IndexingJobMessage], None],
+        metrics: Optional[Metrics] = None,
     ):
         self.settings = settings
         self.message_handler = message_handler
+        self.metrics = metrics
         self.consumer: Optional[AIOKafkaConsumer] = None
         self._running = False
         self._tasks: set[asyncio.Task] = set()
