@@ -24,19 +24,18 @@ scrape_configs:
           service: 'mcp-docs-rag-agent'
           component: 'worker'
 
-  # Note: Kafka and PostgreSQL exporters are optional
-  # Uncomment and add the respective exporter services to docker-compose.yml if needed:
-  #
-  # - job_name: 'kafka-exporter'
-  #   static_configs:
-  #     - targets: ['kafka-exporter:9308']
-  #       labels:
-  #         service: 'kafka'
-  #         component: 'message-broker'
-  #
-  # - job_name: 'postgres-exporter'
-  #   static_configs:
-  #     - targets: ['postgres-exporter:9187']
-  #       labels:
-  #         service: 'postgres'
-  #         component: 'database'
+  # Kafka Exporter metrics
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+        labels:
+          service: 'kafka'
+          component: 'message-broker'
+
+  # PostgreSQL Exporter metrics
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgres'
+          component: 'database'

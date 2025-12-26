@@ -71,11 +71,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(http_requests_total[5m])",
+          "expr": "sum(increase(http_requests_total[5m]))",
           "refId": "A"
         }
       ],
-      "title": "HTTP Requests Rate",
+      "title": "HTTP Requests (5m)",
       "type": "gauge"
     },
     {
@@ -158,7 +158,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p95",
           "refId": "A"
         },
@@ -167,7 +167,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p50",
           "refId": "B"
         },
@@ -176,7 +176,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -263,8 +263,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(kafka_messages_produced_total[5m])",
-          "legendFormat": "Produced - {{topic}}",
+          "expr": "sum(rate(kafka_topic_partition_current_offset{job=\"kafka-exporter\"}[5m])) by (topic)",
+          "legendFormat": "{{topic}} - Messages/sec",
           "refId": "A"
         },
         {
@@ -272,8 +272,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(kafka_messages_consumed_total[5m])",
-          "legendFormat": "Consumed - {{topic}}",
+          "expr": "kafka_brokers{job=\"kafka-exporter\"}",
+          "legendFormat": "Active Brokers",
           "refId": "B"
         }
       ],
@@ -363,8 +363,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "kafka_consumer_lag",
-          "legendFormat": "{{topic}} - partition {{partition}}",
+          "expr": "sum(kafka_consumergroup_lag{job=\"kafka-exporter\"}) by (consumergroup, topic)",
+          "legendFormat": "{{consumergroup}} - {{topic}}",
           "refId": "A"
         }
       ],
@@ -450,8 +450,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "indexing_jobs_active",
-          "legendFormat": "Active Jobs",
+          "expr": "rate(pg_stat_database_xact_commit{job=\"postgres-exporter\"}[5m])",
+          "legendFormat": "Commits/sec",
           "refId": "A"
         },
         {
@@ -459,12 +459,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(indexing_jobs_total[5m])",
-          "legendFormat": "Job Rate",
+          "expr": "rate(pg_stat_database_xact_rollback{job=\"postgres-exporter\"}[5m])",
+          "legendFormat": "Rollbacks/sec",
           "refId": "B"
         }
       ],
-      "title": "Indexing Jobs",
+      "title": "PostgreSQL Transactions",
       "type": "timeseries"
     },
     {
@@ -547,8 +547,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "memory_allocated_bytes",
-          "legendFormat": "Allocated",
+          "expr": "go_memstats_alloc_bytes{job=\"go-backend\"}",
+          "legendFormat": "Go Backend Allocated",
           "refId": "A"
         },
         {
@@ -556,9 +556,18 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "memory_heap_bytes",
-          "legendFormat": "Heap",
+          "expr": "go_memstats_heap_inuse_bytes{job=\"go-backend\"}",
+          "legendFormat": "Go Backend Heap In Use",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_resident_memory_bytes{job=\"python-rag-agent\"}",
+          "legendFormat": "Python RAG Agent",
+          "refId": "C"
         }
       ],
       "title": "Memory Usage",
@@ -644,8 +653,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m]))",
-          "legendFormat": "p95",
+          "expr": "pg_stat_activity_count{job=\"postgres-exporter\"}",
+          "legendFormat": "Active Connections",
           "refId": "A"
         },
         {
@@ -653,12 +662,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, rate(db_query_duration_seconds_bucket[5m]))",
-          "legendFormat": "p99",
+          "expr": "pg_settings_max_connections{job=\"postgres-exporter\"}",
+          "legendFormat": "Max Connections",
           "refId": "B"
         }
       ],
-      "title": "Database Query Latency",
+      "title": "PostgreSQL Connections",
       "type": "timeseries"
     },
     {
@@ -740,7 +749,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(http_requests_total{status_class=\"2xx\"}[5m])",
+          "expr": "sum(increase(http_requests_total{status_class=\"2xx\"}[5m]))",
           "legendFormat": "2xx",
           "refId": "A"
         },
@@ -749,7 +758,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(http_requests_total{status_class=\"4xx\"}[5m])",
+          "expr": "sum(increase(http_requests_total{status_class=\"4xx\"}[5m]))",
           "legendFormat": "4xx",
           "refId": "B"
         },
@@ -758,7 +767,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(http_requests_total{status_class=\"5xx\"}[5m])",
+          "expr": "sum(increase(http_requests_total{status_class=\"5xx\"}[5m]))",
           "legendFormat": "5xx",
           "refId": "C"
         }
